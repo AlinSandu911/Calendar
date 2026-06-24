@@ -112,9 +112,13 @@
   }
   .calendar-cell-event-title {
     display: block;
+    white-space: normal;
+    word-break: break-word;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-weight: 700;
   }
   .calendar-description { color: var(--ink-soft); margin-top: 0.75rem; }
@@ -218,6 +222,77 @@
     background: #f1decb;
   }
   .hidden { display: none; }
+  .day-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 14, 10, 0.6);
+    z-index: 1000;
+    padding: 1rem;
+  }
+  .day-modal.is-open {
+    display: flex;
+  }
+  .day-modal-card {
+    width: min(920px, 96vw);
+    max-height: 92vh;
+    overflow: auto;
+    background: #f8ebda;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.32);
+    padding: 1rem;
+  }
+  .day-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.8rem;
+  }
+  .day-modal-title {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+  .day-modal-close {
+    border: none;
+    border-radius: 9px;
+    padding: 0.45rem 0.8rem;
+    font: inherit;
+    font-weight: 700;
+    background: var(--ink);
+    color: var(--sand);
+    cursor: pointer;
+  }
+  .day-modal-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+  .day-modal-item {
+    background: #fff5e9;
+    border: 1px solid var(--line);
+    border-left-width: 7px;
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+  }
+  .day-modal-meta {
+    color: #5e4635;
+    font-size: 0.86rem;
+    margin-top: 0.25rem;
+  }
+  .day-modal-empty {
+    color: #634e3e;
+    font-style: italic;
+    background: #fff5e9;
+    border: 1px dashed #cfb69f;
+    border-radius: 10px;
+    padding: 0.8rem;
+  }
   .day-focus-panel {
     margin-top: 1rem;
     padding: 1rem 1.1rem;
@@ -277,6 +352,7 @@
     #monthLabel { min-width: 138px; }
     .event-form { grid-template-columns: 1fr; }
     .inline-edit-form { grid-template-columns: 1fr; }
+    .day-modal-card { padding: 0.8rem; }
   }
 </style>
 </head>
@@ -340,6 +416,16 @@
   </div>
 </div>
 
+<div class="day-modal" id="dayModal" aria-hidden="true">
+  <div class="day-modal-card" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
+    <div class="day-modal-header">
+      <h3 class="day-modal-title" id="dayModalTitle">Day details</h3>
+      <button class="day-modal-close" id="dayModalCloseBtn" type="button">Close</button>
+    </div>
+    <ul class="day-modal-list" id="dayModalList"></ul>
+  </div>
+</div>
+
 <script>
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -370,6 +456,10 @@
   const dayFocusTitle = document.getElementById('dayFocusTitle');
   const dayFocusList = document.getElementById('dayFocusList');
   const closeDayFocusBtn = document.getElementById('closeDayFocusBtn');
+  const dayModal = document.getElementById('dayModal');
+  const dayModalTitle = document.getElementById('dayModalTitle');
+  const dayModalList = document.getElementById('dayModalList');
+  const dayModalCloseBtn = document.getElementById('dayModalCloseBtn');
 
   let currentDate = new Date();
   let selectedDate = new Date();
@@ -818,6 +908,87 @@
     });
   }
 
+  function renderDayModal(date) {
+    const dayEvents = getEventsForDate(date);
+    dayModalTitle.textContent = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} - Events`;
+    dayModalList.innerHTML = '';
+
+    if (!dayEvents.length) {
+      const emptyItem = document.createElement('li');
+      emptyItem.className = 'day-modal-empty';
+      emptyItem.textContent = 'No events on this day yet. Add one from the form below the calendar.';
+      dayModalList.appendChild(emptyItem);
+      return;
+    }
+
+    dayEvents.forEach((eventData) => {
+      const categoryMeta = getCategoryMeta(eventData.category, eventData.color);
+      const item = document.createElement('li');
+      item.className = 'day-modal-item';
+      item.style.borderLeftColor = categoryMeta.color;
+
+      const badge = document.createElement('span');
+      badge.className = 'event-category-badge';
+      badge.style.background = categoryMeta.color;
+      badge.textContent = categoryMeta.label;
+      item.appendChild(badge);
+
+      const title = document.createElement('div');
+      title.className = 'event-title';
+      title.textContent = eventData.title;
+      item.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'day-modal-meta';
+      const details = [formatEventTimeLabel(eventData)];
+      const recurrenceLabel = formatRecurrenceLabel(eventData);
+      if (recurrenceLabel) {
+        details.push(recurrenceLabel);
+      }
+      meta.textContent = details.join(' • ');
+      item.appendChild(meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'event-actions';
+
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.textContent = 'Edit in list below';
+      editButton.addEventListener('click', () => {
+        dayModal.classList.remove('is-open');
+        dayModal.setAttribute('aria-hidden', 'true');
+        const target = eventList.querySelector(`button[data-action="edit"][data-event-id="${eventData.id}"]`);
+        if (target) {
+          target.click();
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      actions.appendChild(editButton);
+
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.textContent = 'Remove';
+      removeButton.addEventListener('click', () => {
+        const sourceEvents = events[eventData.sourceKey] || [];
+        const index = sourceEvents.findIndex((itemValue) => itemValue.id === eventData.id);
+        if (index === -1) return;
+        sourceEvents.splice(index, 1);
+        if (!sourceEvents.length) {
+          delete events[eventData.sourceKey];
+        }
+        saveEvents();
+        renderCalendar(currentDate);
+        renderEventList(selectedDate);
+        renderDayFocus(selectedDate);
+        renderDayModal(selectedDate);
+      });
+      actions.appendChild(removeButton);
+
+      item.appendChild(actions);
+      dayModalList.appendChild(item);
+    });
+  }
+
   function createDateCell(day, date, isCurrentMonth) {
     const cell = document.createElement('div');
     cell.className = isCurrentMonth ? 'calendar-cell' : 'not-current-month';
@@ -870,6 +1041,9 @@
         renderEventList(selectedDate);
         dayFocusPanel.classList.remove('hidden');
         renderDayFocus(selectedDate);
+        renderDayModal(selectedDate);
+        dayModal.classList.add('is-open');
+        dayModal.setAttribute('aria-hidden', 'false');
         eventInput.focus();
       });
     }
@@ -1107,6 +1281,25 @@
 
   closeDayFocusBtn.addEventListener('click', () => {
     dayFocusPanel.classList.add('hidden');
+  });
+
+  dayModalCloseBtn.addEventListener('click', () => {
+    dayModal.classList.remove('is-open');
+    dayModal.setAttribute('aria-hidden', 'true');
+  });
+
+  dayModal.addEventListener('click', (event) => {
+    if (event.target === dayModal) {
+      dayModal.classList.remove('is-open');
+      dayModal.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dayModal.classList.contains('is-open')) {
+      dayModal.classList.remove('is-open');
+      dayModal.setAttribute('aria-hidden', 'true');
+    }
   });
 
   updateMainScheduleState();
