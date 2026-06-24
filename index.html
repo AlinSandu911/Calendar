@@ -11,6 +11,12 @@
     --sand-deep: #e5ccb3;
     --card: #f8ebda;
     --line: #d9bda2;
+    --work: #4a2e1f;
+    --personal: #9c6b3f;
+    --health: #2f5f4c;
+    --study: #375a7f;
+    --family: #7d4f8a;
+    --other: #555555;
   }
   * { box-sizing: border-box; }
   body {
@@ -109,7 +115,8 @@
     gap: 0.45rem;
     margin-bottom: 0.8rem;
   }
-  .event-form input {
+  .event-form input,
+  .event-form select {
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 0.55rem 0.65rem;
@@ -126,6 +133,15 @@
     cursor: pointer;
     background: var(--ink);
     color: var(--sand);
+  }
+  .event-category-badge {
+    display: inline-block;
+    margin-bottom: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
   }
   .event-meta {
     color: #5e4635;
@@ -161,6 +177,7 @@
   }
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
   .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
+  .event-title { font-weight: 700; }
   .event-none { color: #634e3e; font-style: italic; }
   @media (max-width: 740px) {
     body { padding: 0.8rem; }
@@ -201,6 +218,14 @@
       <input id="eventInput" type="text" placeholder="Event title" maxlength="120" />
       <input id="eventTimeInput" type="time" />
       <input id="eventDurationInput" type="number" min="5" step="5" max="1440" placeholder="Duration (mins)" />
+      <select id="eventCategoryInput">
+        <option value="personal">Personal</option>
+        <option value="work">Work</option>
+        <option value="health">Health</option>
+        <option value="study">Study</option>
+        <option value="family">Family</option>
+        <option value="other">Other</option>
+      </select>
       <button type="submit">Add</button>
     </form>
     <ul class="event-list" id="eventList"></ul>
@@ -219,6 +244,7 @@
   const eventInput = document.getElementById('eventInput');
   const eventTimeInput = document.getElementById('eventTimeInput');
   const eventDurationInput = document.getElementById('eventDurationInput');
+  const eventCategoryInput = document.getElementById('eventCategoryInput');
   const clearDayBtn = document.getElementById('clearDayBtn');
   let currentDate = new Date();
   let selectedDate = new Date();
@@ -232,16 +258,20 @@
       normalized[key] = dayEvents.map((eventValue) => {
         if (typeof eventValue === 'string') {
           return {
+            id: generateEventId(),
             title: eventValue,
             time: '',
-            durationMinutes: ''
+            durationMinutes: '',
+            category: 'personal'
           };
         }
 
         return {
+          id: eventValue && eventValue.id ? String(eventValue.id) : generateEventId(),
           title: (eventValue && eventValue.title ? String(eventValue.title) : '').trim(),
           time: eventValue && eventValue.time ? String(eventValue.time) : '',
-          durationMinutes: eventValue && eventValue.durationMinutes !== undefined ? String(eventValue.durationMinutes) : ''
+          durationMinutes: eventValue && eventValue.durationMinutes !== undefined ? String(eventValue.durationMinutes) : '',
+          category: normalizeCategory(eventValue && eventValue.category ? String(eventValue.category) : 'personal')
         };
       }).filter((eventValue) => eventValue.title);
     });
@@ -254,6 +284,28 @@
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function generateEventId() {
+    return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  }
+
+  function normalizeCategory(category) {
+    const allowed = ['personal', 'work', 'health', 'study', 'family', 'other'];
+    return allowed.includes(category) ? category : 'personal';
+  }
+
+  function getCategoryMeta(category) {
+    const normalized = normalizeCategory(category);
+    const map = {
+      personal: { label: 'Personal', color: 'var(--personal)', tint: 'rgba(156, 107, 63, 0.15)' },
+      work: { label: 'Work', color: 'var(--work)', tint: 'rgba(74, 46, 31, 0.18)' },
+      health: { label: 'Health', color: 'var(--health)', tint: 'rgba(47, 95, 76, 0.16)' },
+      study: { label: 'Study', color: 'var(--study)', tint: 'rgba(55, 90, 127, 0.16)' },
+      family: { label: 'Family', color: 'var(--family)', tint: 'rgba(125, 79, 138, 0.16)' },
+      other: { label: 'Other', color: 'var(--other)', tint: 'rgba(85, 85, 85, 0.15)' }
+    };
+    return map[normalized];
   }
 
   function formatEventPreview(eventData) {
@@ -285,11 +337,21 @@
       return;
     }
 
-    dayEvents.forEach((eventData, index) => {
+    dayEvents.forEach((eventData) => {
+      const categoryMeta = getCategoryMeta(eventData.category);
       const item = document.createElement('li');
       item.className = 'event-item';
+      item.dataset.eventId = eventData.id;
+      item.style.borderLeft = `6px solid ${categoryMeta.color}`;
+
+      const categoryBadge = document.createElement('span');
+      categoryBadge.className = 'event-category-badge';
+      categoryBadge.style.background = categoryMeta.color;
+      categoryBadge.textContent = categoryMeta.label;
+      item.appendChild(categoryBadge);
 
       const title = document.createElement('div');
+      title.className = 'event-title';
       title.textContent = eventData.title;
       item.appendChild(title);
 
@@ -309,40 +371,15 @@
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.textContent = 'Edit';
-      editBtn.addEventListener('click', () => {
-        const newTitle = prompt('Edit event title:', eventData.title);
-        if (newTitle === null) return;
-        const trimmedTitle = newTitle.trim();
-        if (!trimmedTitle) return;
-
-        const newTime = prompt('Edit time (HH:MM, optional):', eventData.time || '') || '';
-        const newDuration = prompt('Edit duration in minutes (optional):', eventData.durationMinutes || '') || '';
-
-        events[key][index] = {
-          title: trimmedTitle,
-          time: newTime.trim(),
-          durationMinutes: newDuration.trim()
-        };
-
-        sortEventsForDay(key);
-        saveEvents();
-        renderCalendar(currentDate);
-        renderEventList(selectedDate);
-      });
+      editBtn.dataset.action = 'edit';
+      editBtn.dataset.eventId = eventData.id;
       actionRow.appendChild(editBtn);
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
       deleteBtn.textContent = 'Remove';
-      deleteBtn.addEventListener('click', () => {
-        events[key].splice(index, 1);
-        if (!events[key].length) {
-          delete events[key];
-        }
-        saveEvents();
-        renderCalendar(currentDate);
-        renderEventList(selectedDate);
-      });
+      deleteBtn.dataset.action = 'remove';
+      deleteBtn.dataset.eventId = eventData.id;
       actionRow.appendChild(deleteBtn);
 
       item.appendChild(actionRow);
@@ -357,7 +394,13 @@
   function addEventToDate(date, eventData) {
     const eventKey = formatDateKey(date);
     events[eventKey] = events[eventKey] || [];
-    events[eventKey].push(eventData);
+    events[eventKey].push({
+      id: generateEventId(),
+      title: eventData.title,
+      time: eventData.time,
+      durationMinutes: eventData.durationMinutes,
+      category: normalizeCategory(eventData.category)
+    });
     sortEventsForDay(eventKey);
     saveEvents();
   }
@@ -380,9 +423,12 @@
         const eventListPreview = document.createElement('div');
         eventListPreview.className = 'calendar-cell-events';
         dayEvents.slice(0, 2).forEach(eventData => {
+          const categoryMeta = getCategoryMeta(eventData.category);
           const eventBadge = document.createElement('div');
           eventBadge.className = 'calendar-cell-event';
           eventBadge.textContent = formatEventPreview(eventData);
+          eventBadge.style.borderLeft = `4px solid ${categoryMeta.color}`;
+          eventBadge.style.background = categoryMeta.tint;
           eventListPreview.appendChild(eventBadge);
         });
         cell.appendChild(eventListPreview);
@@ -457,6 +503,54 @@
     renderCalendar(currentDate);
   });
 
+  eventList.addEventListener('click', (event) => {
+    const targetButton = event.target.closest('button[data-action]');
+    if (!targetButton) return;
+
+    const action = targetButton.dataset.action;
+    const eventId = targetButton.dataset.eventId;
+    const key = formatDateKey(selectedDate);
+    const dayEvents = events[key] || [];
+    const eventIndex = dayEvents.findIndex((item) => item.id === eventId);
+    if (eventIndex === -1) return;
+
+    if (action === 'remove') {
+      dayEvents.splice(eventIndex, 1);
+      if (!dayEvents.length) {
+        delete events[key];
+      }
+      saveEvents();
+      renderCalendar(currentDate);
+      renderEventList(selectedDate);
+      return;
+    }
+
+    if (action === 'edit') {
+      const existing = dayEvents[eventIndex];
+      const newTitle = prompt('Edit event title:', existing.title);
+      if (newTitle === null) return;
+      const trimmedTitle = newTitle.trim();
+      if (!trimmedTitle) return;
+
+      const newTime = prompt('Edit time (HH:MM, optional):', existing.time || '') || '';
+      const newDuration = prompt('Edit duration in minutes (optional):', existing.durationMinutes || '') || '';
+      const newCategory = prompt('Edit category (personal/work/health/study/family/other):', existing.category || 'personal') || 'personal';
+
+      dayEvents[eventIndex] = {
+        ...existing,
+        title: trimmedTitle,
+        time: newTime.trim(),
+        durationMinutes: newDuration.trim(),
+        category: normalizeCategory(newCategory.trim().toLowerCase())
+      };
+
+      sortEventsForDay(key);
+      saveEvents();
+      renderCalendar(currentDate);
+      renderEventList(selectedDate);
+    }
+  });
+
   eventForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const trimmed = eventInput.value.trim();
@@ -467,11 +561,13 @@
     addEventToDate(selectedDate, {
       title: trimmed,
       time: eventTimeInput.value,
-      durationMinutes: eventDurationInput.value ? String(eventDurationInput.value) : ''
+      durationMinutes: eventDurationInput.value ? String(eventDurationInput.value) : '',
+      category: eventCategoryInput.value
     });
     eventInput.value = '';
     eventTimeInput.value = '';
     eventDurationInput.value = '';
+    eventCategoryInput.value = 'personal';
     renderCalendar(currentDate);
     renderEventList(selectedDate);
     eventInput.focus();
