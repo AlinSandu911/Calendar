@@ -84,6 +84,7 @@
   }
   .calendar-grid .day-number { font-size: 1.03rem; font-weight: 800; color: var(--ink); }
   .calendar-grid .today { border-color: var(--ink); background: #e7c9ad; }
+  .calendar-grid .selected { outline: 2px solid var(--ink); outline-offset: -2px; }
   .calendar-grid .not-current-month { color: #8b7c71; opacity: 0.72; background: #f0dfce; cursor: default; }
   .calendar-cell { position: relative; }
   .calendar-cell-events { padding: 0; margin: 0; gap: 0.25rem; display: flex; flex-direction: column; }
@@ -102,6 +103,30 @@
   .helper-text { margin-top: 0.25rem; color: var(--ink-soft); }
   .event-panel { margin-top: 1.2rem; padding: 1rem 1.1rem; background: #ecd8c4; border-radius: 14px; border: 1px solid var(--line); }
   .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
+  .event-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+  }
+  .event-form input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    color: var(--ink);
+    background: #fff8f1;
+  }
+  .event-form button {
+    border: none;
+    border-radius: 10px;
+    padding: 0.55rem 0.9rem;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--sand);
+  }
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
   .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
   .event-none { color: #634e3e; font-style: italic; }
@@ -139,6 +164,10 @@
   <p class="calendar-description">Click the arrows to move through the months. Today's date is highlighted. Click any date to add or edit events.</p>
   <div class="event-panel" id="eventPanel">
     <h3 id="selectedDateHeading">Events for today</h3>
+    <form class="event-form" id="eventForm">
+      <input id="eventInput" type="text" placeholder="Add an event for selected date" maxlength="120" />
+      <button type="submit">Add</button>
+    </form>
     <ul class="event-list" id="eventList"></ul>
   </div>
 </div>
@@ -150,6 +179,8 @@
   const monthLabel = document.getElementById('monthLabel');
   const eventList = document.getElementById('eventList');
   const selectedDateHeading = document.getElementById('selectedDateHeading');
+  const eventForm = document.getElementById('eventForm');
+  const eventInput = document.getElementById('eventInput');
   let currentDate = new Date();
   let selectedDate = new Date();
   const storedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
@@ -188,6 +219,13 @@
     localStorage.setItem('calendarEvents', JSON.stringify(events));
   }
 
+  function addEventToDate(date, text) {
+    const eventKey = formatDateKey(date);
+    events[eventKey] = events[eventKey] || [];
+    events[eventKey].push(text);
+    saveEvents();
+  }
+
   function createDateCell(day, date, isCurrentMonth) {
     const cell = document.createElement('div');
     cell.className = isCurrentMonth ? 'calendar-cell' : 'not-current-month';
@@ -218,17 +256,15 @@
         cell.classList.add('today');
       }
 
+      if (date.toDateString() === selectedDate.toDateString()) {
+        cell.classList.add('selected');
+      }
+
       cell.addEventListener('click', () => {
-        const userEvent = prompt(`Add an event for ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}:`, '');
-        if (userEvent === null) return;
-        const trimmed = userEvent.trim();
-        if (!trimmed) return;
-        events[eventKey] = events[eventKey] || [];
-        events[eventKey].push(trimmed);
-        saveEvents();
         selectedDate = new Date(date);
         renderCalendar(currentDate);
         renderEventList(selectedDate);
+        eventInput.focus();
       });
     }
 
@@ -283,6 +319,20 @@
   document.getElementById('nextMonth').addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar(currentDate);
+  });
+
+  eventForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const trimmed = eventInput.value.trim();
+    if (!trimmed) {
+      eventInput.focus();
+      return;
+    }
+    addEventToDate(selectedDate, trimmed);
+    eventInput.value = '';
+    renderCalendar(currentDate);
+    renderEventList(selectedDate);
+    eventInput.focus();
   });
 
   renderCalendar(currentDate);
