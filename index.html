@@ -95,15 +95,27 @@
   .calendar-cell { position: relative; }
   .calendar-cell-events { padding: 0; margin: 0; gap: 0.25rem; display: flex; flex-direction: column; }
   .calendar-cell-event {
-    font-size: 0.76rem;
-    line-height: 1.2;
-    background: rgba(23, 18, 14, 0.09);
-    color: var(--ink);
+    font-size: 0.73rem;
+    line-height: 1.25;
+    background: rgba(23, 18, 14, 0.11);
+    color: #1a120d;
     border-radius: 8px;
-    padding: 0.25rem 0.4rem;
+    padding: 0.32rem 0.42rem;
+    overflow: hidden;
+  }
+  .calendar-cell-event-time {
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    margin-bottom: 0.1rem;
+    text-transform: uppercase;
+  }
+  .calendar-cell-event-title {
+    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 700;
   }
   .calendar-description { color: var(--ink-soft); margin-top: 0.75rem; }
   .helper-text { margin-top: 0.25rem; color: var(--ink-soft); }
@@ -111,7 +123,7 @@
   .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
   .event-form {
     display: grid;
-    grid-template-columns: minmax(170px, 1.5fr) minmax(110px, 0.9fr) minmax(140px, 1fr) auto;
+    grid-template-columns: minmax(180px, 1.5fr) minmax(110px, 0.9fr) minmax(120px, 0.8fr) minmax(110px, 0.8fr) auto;
     gap: 0.45rem;
     margin-bottom: 0.8rem;
   }
@@ -178,6 +190,81 @@
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
   .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
   .event-title { font-weight: 700; }
+  .inline-edit-form {
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+    border-top: 1px dashed #ceb39a;
+    display: grid;
+    grid-template-columns: minmax(140px, 1.6fr) minmax(90px, 0.8fr) minmax(90px, 0.8fr) minmax(90px, 0.8fr);
+    gap: 0.4rem;
+  }
+  .inline-edit-form input,
+  .inline-edit-form select,
+  .inline-edit-form button {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font: inherit;
+    padding: 0.4rem 0.5rem;
+    background: #fff8f1;
+    color: var(--ink);
+  }
+  .inline-edit-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.4rem;
+  }
+  .inline-edit-actions button {
+    cursor: pointer;
+    background: #f1decb;
+  }
+  .hidden { display: none; }
+  .day-focus-panel {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    background: #f6e8d7;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .day-focus-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.65rem;
+  }
+  .day-focus-title {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .day-focus-close {
+    border: none;
+    border-radius: 9px;
+    padding: 0.42rem 0.7rem;
+    font: inherit;
+    font-weight: 700;
+    background: var(--ink);
+    color: var(--sand);
+    cursor: pointer;
+  }
+  .day-focus-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+  .day-focus-item {
+    background: #fff5e9;
+    border: 1px solid var(--line);
+    border-left-width: 7px;
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+  }
+  .day-focus-meta {
+    color: #5e4635;
+    font-size: 0.86rem;
+    margin-top: 0.25rem;
+  }
   .event-none { color: #634e3e; font-style: italic; }
   @media (max-width: 740px) {
     body { padding: 0.8rem; }
@@ -189,6 +276,7 @@
     .calendar-cell-event { font-size: 0.68rem; }
     #monthLabel { min-width: 138px; }
     .event-form { grid-template-columns: 1fr; }
+    .inline-edit-form { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -230,6 +318,13 @@
     </form>
     <ul class="event-list" id="eventList"></ul>
     <button class="event-clear-day" id="clearDayBtn" type="button">Clear all events for selected day</button>
+    <div class="day-focus-panel hidden" id="dayFocusPanel">
+      <div class="day-focus-header">
+        <h4 class="day-focus-title" id="dayFocusTitle">Day Focus</h4>
+        <button class="day-focus-close" id="closeDayFocusBtn" type="button">Close Day Focus</button>
+      </div>
+      <ul class="day-focus-list" id="dayFocusList"></ul>
+    </div>
   </div>
 </div>
 
@@ -246,6 +341,10 @@
   const eventDurationInput = document.getElementById('eventDurationInput');
   const eventCategoryInput = document.getElementById('eventCategoryInput');
   const clearDayBtn = document.getElementById('clearDayBtn');
+  const dayFocusPanel = document.getElementById('dayFocusPanel');
+  const dayFocusTitle = document.getElementById('dayFocusTitle');
+  const dayFocusList = document.getElementById('dayFocusList');
+  const closeDayFocusBtn = document.getElementById('closeDayFocusBtn');
   let currentDate = new Date();
   let selectedDate = new Date();
   const storedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
@@ -383,7 +482,109 @@
       actionRow.appendChild(deleteBtn);
 
       item.appendChild(actionRow);
+
+      const inlineEditForm = document.createElement('form');
+      inlineEditForm.className = 'inline-edit-form hidden';
+      inlineEditForm.dataset.eventId = eventData.id;
+
+      const editTitle = document.createElement('input');
+      editTitle.type = 'text';
+      editTitle.required = true;
+      editTitle.maxLength = 120;
+      editTitle.value = eventData.title;
+      editTitle.dataset.field = 'title';
+      inlineEditForm.appendChild(editTitle);
+
+      const editTime = document.createElement('input');
+      editTime.type = 'time';
+      editTime.value = eventData.time || '';
+      editTime.dataset.field = 'time';
+      inlineEditForm.appendChild(editTime);
+
+      const editDuration = document.createElement('input');
+      editDuration.type = 'number';
+      editDuration.min = '5';
+      editDuration.step = '5';
+      editDuration.max = '1440';
+      editDuration.placeholder = 'Duration';
+      editDuration.value = eventData.durationMinutes || '';
+      editDuration.dataset.field = 'durationMinutes';
+      inlineEditForm.appendChild(editDuration);
+
+      const editCategory = document.createElement('select');
+      editCategory.dataset.field = 'category';
+      ['personal', 'work', 'health', 'study', 'family', 'other'].forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value.charAt(0).toUpperCase() + value.slice(1);
+        if (value === eventData.category) {
+          option.selected = true;
+        }
+        editCategory.appendChild(option);
+      });
+      inlineEditForm.appendChild(editCategory);
+
+      const inlineActions = document.createElement('div');
+      inlineActions.className = 'inline-edit-actions';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'submit';
+      saveBtn.textContent = 'Save changes';
+      inlineActions.appendChild(saveBtn);
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.dataset.action = 'edit-cancel';
+      cancelBtn.dataset.eventId = eventData.id;
+      inlineActions.appendChild(cancelBtn);
+
+      inlineEditForm.appendChild(inlineActions);
+      item.appendChild(inlineEditForm);
       eventList.appendChild(item);
+    });
+  }
+
+  function renderDayFocus(date) {
+    const key = formatDateKey(date);
+    const dayEvents = events[key] || [];
+    dayFocusTitle.textContent = `Day Focus: ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    dayFocusList.innerHTML = '';
+
+    if (!dayEvents.length) {
+      const emptyItem = document.createElement('li');
+      emptyItem.className = 'day-focus-item event-none';
+      emptyItem.textContent = 'No events on this day yet.';
+      dayFocusList.appendChild(emptyItem);
+      return;
+    }
+
+    dayEvents.forEach((eventData) => {
+      const categoryMeta = getCategoryMeta(eventData.category);
+      const item = document.createElement('li');
+      item.className = 'day-focus-item';
+      item.style.borderLeftColor = categoryMeta.color;
+
+      const label = document.createElement('span');
+      label.className = 'event-category-badge';
+      label.style.background = categoryMeta.color;
+      label.textContent = categoryMeta.label;
+      item.appendChild(label);
+
+      const title = document.createElement('div');
+      title.className = 'event-title';
+      title.textContent = eventData.title;
+      item.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'day-focus-meta';
+      const parts = [];
+      parts.push(eventData.time ? `Time: ${eventData.time}` : 'Time: Not set');
+      parts.push(eventData.durationMinutes ? `Duration: ${eventData.durationMinutes} mins` : 'Duration: Not set');
+      meta.textContent = parts.join(' • ');
+      item.appendChild(meta);
+
+      dayFocusList.appendChild(item);
     });
   }
 
@@ -426,7 +627,17 @@
           const categoryMeta = getCategoryMeta(eventData.category);
           const eventBadge = document.createElement('div');
           eventBadge.className = 'calendar-cell-event';
-          eventBadge.textContent = formatEventPreview(eventData);
+
+          const timeLine = document.createElement('div');
+          timeLine.className = 'calendar-cell-event-time';
+          timeLine.textContent = eventData.time || 'No time';
+          eventBadge.appendChild(timeLine);
+
+          const titleLine = document.createElement('span');
+          titleLine.className = 'calendar-cell-event-title';
+          titleLine.textContent = eventData.title;
+          eventBadge.appendChild(titleLine);
+
           eventBadge.style.borderLeft = `4px solid ${categoryMeta.color}`;
           eventBadge.style.background = categoryMeta.tint;
           eventListPreview.appendChild(eventBadge);
@@ -446,6 +657,8 @@
         selectedDate = new Date(date);
         renderCalendar(currentDate);
         renderEventList(selectedDate);
+        dayFocusPanel.classList.remove('hidden');
+        renderDayFocus(selectedDate);
         eventInput.focus();
       });
     }
@@ -522,33 +735,59 @@
       saveEvents();
       renderCalendar(currentDate);
       renderEventList(selectedDate);
+      renderDayFocus(selectedDate);
       return;
     }
 
     if (action === 'edit') {
-      const existing = dayEvents[eventIndex];
-      const newTitle = prompt('Edit event title:', existing.title);
-      if (newTitle === null) return;
-      const trimmedTitle = newTitle.trim();
-      if (!trimmedTitle) return;
-
-      const newTime = prompt('Edit time (HH:MM, optional):', existing.time || '') || '';
-      const newDuration = prompt('Edit duration in minutes (optional):', existing.durationMinutes || '') || '';
-      const newCategory = prompt('Edit category (personal/work/health/study/family/other):', existing.category || 'personal') || 'personal';
-
-      dayEvents[eventIndex] = {
-        ...existing,
-        title: trimmedTitle,
-        time: newTime.trim(),
-        durationMinutes: newDuration.trim(),
-        category: normalizeCategory(newCategory.trim().toLowerCase())
-      };
-
-      sortEventsForDay(key);
-      saveEvents();
-      renderCalendar(currentDate);
-      renderEventList(selectedDate);
+      const targetItem = targetButton.closest('.event-item');
+      if (!targetItem) return;
+      const form = targetItem.querySelector('.inline-edit-form');
+      if (!form) return;
+      form.classList.remove('hidden');
+      return;
     }
+
+    if (action === 'edit-cancel') {
+      const targetItem = targetButton.closest('.event-item');
+      if (!targetItem) return;
+      const form = targetItem.querySelector('.inline-edit-form');
+      if (!form) return;
+      form.classList.add('hidden');
+    }
+  });
+
+  eventList.addEventListener('submit', (event) => {
+    const form = event.target.closest('.inline-edit-form');
+    if (!form) return;
+    event.preventDefault();
+
+    const key = formatDateKey(selectedDate);
+    const dayEvents = events[key] || [];
+    const eventId = form.dataset.eventId;
+    const eventIndex = dayEvents.findIndex((item) => item.id === eventId);
+    if (eventIndex === -1) return;
+
+    const nextTitle = form.querySelector('[data-field="title"]').value.trim();
+    if (!nextTitle) return;
+
+    const nextTime = form.querySelector('[data-field="time"]').value.trim();
+    const nextDuration = form.querySelector('[data-field="durationMinutes"]').value.trim();
+    const nextCategory = form.querySelector('[data-field="category"]').value;
+
+    dayEvents[eventIndex] = {
+      ...dayEvents[eventIndex],
+      title: nextTitle,
+      time: nextTime,
+      durationMinutes: nextDuration,
+      category: normalizeCategory(nextCategory)
+    };
+
+    sortEventsForDay(key);
+    saveEvents();
+    renderCalendar(currentDate);
+    renderEventList(selectedDate);
+    renderDayFocus(selectedDate);
   });
 
   eventForm.addEventListener('submit', (event) => {
@@ -570,6 +809,8 @@
     eventCategoryInput.value = 'personal';
     renderCalendar(currentDate);
     renderEventList(selectedDate);
+    renderDayFocus(selectedDate);
+    dayFocusPanel.classList.remove('hidden');
     eventInput.focus();
   });
 
@@ -586,10 +827,16 @@
     saveEvents();
     renderCalendar(currentDate);
     renderEventList(selectedDate);
+    renderDayFocus(selectedDate);
+  });
+
+  closeDayFocusBtn.addEventListener('click', () => {
+    dayFocusPanel.classList.add('hidden');
   });
 
   renderCalendar(currentDate);
   renderEventList(selectedDate);
+  renderDayFocus(selectedDate);
 </script>
 </body>
 </html>
