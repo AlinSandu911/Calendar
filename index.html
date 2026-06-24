@@ -123,7 +123,7 @@
   .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
   .event-form {
     display: grid;
-    grid-template-columns: minmax(180px, 1.5fr) minmax(110px, 0.9fr) minmax(120px, 0.8fr) minmax(110px, 0.8fr) auto;
+    grid-template-columns: repeat(4, minmax(130px, 1fr));
     gap: 0.45rem;
     margin-bottom: 0.8rem;
   }
@@ -195,7 +195,7 @@
     padding-top: 0.65rem;
     border-top: 1px dashed #ceb39a;
     display: grid;
-    grid-template-columns: minmax(140px, 1.6fr) minmax(90px, 0.8fr) minmax(90px, 0.8fr) minmax(90px, 0.8fr);
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
     gap: 0.4rem;
   }
   .inline-edit-form input,
@@ -304,8 +304,12 @@
     <h3 id="selectedDateHeading">Events for today</h3>
     <form class="event-form" id="eventForm">
       <input id="eventInput" type="text" placeholder="Event title" maxlength="120" />
-      <input id="eventTimeInput" type="time" />
-      <input id="eventDurationInput" type="number" min="5" step="5" max="1440" placeholder="Duration (mins)" />
+      <select id="eventScheduleInput">
+        <option value="timeframe">Time frame</option>
+        <option value="allday">All day</option>
+      </select>
+      <input id="eventStartTimeInput" type="time" />
+      <input id="eventEndTimeInput" type="time" />
       <select id="eventCategoryInput">
         <option value="personal">Personal</option>
         <option value="work">Work</option>
@@ -314,6 +318,14 @@
         <option value="family">Family</option>
         <option value="other">Other</option>
       </select>
+      <input id="eventColorInput" type="color" value="#9c6b3f" />
+      <select id="eventRecurrenceInput">
+        <option value="none">One-time event</option>
+        <option value="daily">Daily series</option>
+        <option value="weekly">Weekly series</option>
+        <option value="monthly">Monthly series</option>
+      </select>
+      <input id="eventRecurrenceUntilInput" type="date" />
       <button type="submit">Add</button>
     </form>
     <ul class="event-list" id="eventList"></ul>
@@ -331,24 +343,76 @@
 <script>
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const categoryTheme = {
+    personal: { label: 'Personal', color: '#9c6b3f', tint: 'rgba(156, 107, 63, 0.15)' },
+    work: { label: 'Work', color: '#4a2e1f', tint: 'rgba(74, 46, 31, 0.18)' },
+    health: { label: 'Health', color: '#2f5f4c', tint: 'rgba(47, 95, 76, 0.16)' },
+    study: { label: 'Study', color: '#375a7f', tint: 'rgba(55, 90, 127, 0.16)' },
+    family: { label: 'Family', color: '#7d4f8a', tint: 'rgba(125, 79, 138, 0.16)' },
+    other: { label: 'Other', color: '#555555', tint: 'rgba(85, 85, 85, 0.15)' }
+  };
+
   const calendarGrid = document.getElementById('calendarGrid');
   const monthLabel = document.getElementById('monthLabel');
   const eventList = document.getElementById('eventList');
   const selectedDateHeading = document.getElementById('selectedDateHeading');
   const eventForm = document.getElementById('eventForm');
   const eventInput = document.getElementById('eventInput');
-  const eventTimeInput = document.getElementById('eventTimeInput');
-  const eventDurationInput = document.getElementById('eventDurationInput');
+  const eventScheduleInput = document.getElementById('eventScheduleInput');
+  const eventStartTimeInput = document.getElementById('eventStartTimeInput');
+  const eventEndTimeInput = document.getElementById('eventEndTimeInput');
   const eventCategoryInput = document.getElementById('eventCategoryInput');
+  const eventColorInput = document.getElementById('eventColorInput');
+  const eventRecurrenceInput = document.getElementById('eventRecurrenceInput');
+  const eventRecurrenceUntilInput = document.getElementById('eventRecurrenceUntilInput');
   const clearDayBtn = document.getElementById('clearDayBtn');
   const dayFocusPanel = document.getElementById('dayFocusPanel');
   const dayFocusTitle = document.getElementById('dayFocusTitle');
   const dayFocusList = document.getElementById('dayFocusList');
   const closeDayFocusBtn = document.getElementById('closeDayFocusBtn');
+
   let currentDate = new Date();
   let selectedDate = new Date();
   const storedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
   const events = normalizeEventsData(storedEvents || {});
+
+  function generateEventId() {
+    return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  }
+
+  function normalizeCategory(category) {
+    return Object.prototype.hasOwnProperty.call(categoryTheme, category) ? category : 'personal';
+  }
+
+  function normalizeRecurrence(value) {
+    const allowed = ['none', 'daily', 'weekly', 'monthly'];
+    return allowed.includes(value) ? value : 'none';
+  }
+
+  function formatDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseDateKey(dateKey) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+  }
+
+  function addMinutesToTime(timeValue, minutesToAdd) {
+    if (!timeValue || Number.isNaN(minutesToAdd) || minutesToAdd <= 0) {
+      return '';
+    }
+
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const total = (hours * 60) + minutes + minutesToAdd;
+    const wrapped = ((total % 1440) + 1440) % 1440;
+    const nextHours = String(Math.floor(wrapped / 60)).padStart(2, '0');
+    const nextMinutes = String(wrapped % 60).padStart(2, '0');
+    return `${nextHours}:${nextMinutes}`;
+  }
 
   function normalizeEventsData(inputEvents) {
     const normalized = {};
@@ -359,18 +423,37 @@
           return {
             id: generateEventId(),
             title: eventValue,
-            time: '',
-            durationMinutes: '',
-            category: 'personal'
+            allDay: true,
+            startTime: '',
+            endTime: '',
+            category: 'personal',
+            color: categoryTheme.personal.color,
+            recurrence: 'none',
+            recurrenceUntil: ''
           };
         }
+
+        const legacyTime = eventValue && eventValue.time ? String(eventValue.time) : '';
+        const legacyDuration = eventValue && eventValue.durationMinutes ? Number(eventValue.durationMinutes) : NaN;
+        const startTime = eventValue && eventValue.startTime ? String(eventValue.startTime) : legacyTime;
+        const endTime = eventValue && eventValue.endTime
+          ? String(eventValue.endTime)
+          : addMinutesToTime(legacyTime, legacyDuration);
+        const category = normalizeCategory(eventValue && eventValue.category ? String(eventValue.category) : 'personal');
+        const allDay = eventValue && typeof eventValue.allDay === 'boolean'
+          ? eventValue.allDay
+          : (!startTime && !endTime);
 
         return {
           id: eventValue && eventValue.id ? String(eventValue.id) : generateEventId(),
           title: (eventValue && eventValue.title ? String(eventValue.title) : '').trim(),
-          time: eventValue && eventValue.time ? String(eventValue.time) : '',
-          durationMinutes: eventValue && eventValue.durationMinutes !== undefined ? String(eventValue.durationMinutes) : '',
-          category: normalizeCategory(eventValue && eventValue.category ? String(eventValue.category) : 'personal')
+          allDay,
+          startTime,
+          endTime,
+          category,
+          color: eventValue && eventValue.color ? String(eventValue.color) : categoryTheme[category].color,
+          recurrence: normalizeRecurrence(eventValue && eventValue.recurrence ? String(eventValue.recurrence) : 'none'),
+          recurrenceUntil: eventValue && eventValue.recurrenceUntil ? String(eventValue.recurrenceUntil) : ''
         };
       }).filter((eventValue) => eventValue.title);
     });
@@ -378,55 +461,141 @@
     return normalized;
   }
 
-  function formatDateKey(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  function generateEventId() {
-    return `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-  }
-
-  function normalizeCategory(category) {
-    const allowed = ['personal', 'work', 'health', 'study', 'family', 'other'];
-    return allowed.includes(category) ? category : 'personal';
-  }
-
-  function getCategoryMeta(category) {
+  function getCategoryMeta(category, customColor) {
     const normalized = normalizeCategory(category);
-    const map = {
-      personal: { label: 'Personal', color: 'var(--personal)', tint: 'rgba(156, 107, 63, 0.15)' },
-      work: { label: 'Work', color: 'var(--work)', tint: 'rgba(74, 46, 31, 0.18)' },
-      health: { label: 'Health', color: 'var(--health)', tint: 'rgba(47, 95, 76, 0.16)' },
-      study: { label: 'Study', color: 'var(--study)', tint: 'rgba(55, 90, 127, 0.16)' },
-      family: { label: 'Family', color: 'var(--family)', tint: 'rgba(125, 79, 138, 0.16)' },
-      other: { label: 'Other', color: 'var(--other)', tint: 'rgba(85, 85, 85, 0.15)' }
+    return {
+      ...categoryTheme[normalized],
+      color: customColor || categoryTheme[normalized].color
     };
-    return map[normalized];
   }
 
-  function formatEventPreview(eventData) {
-    const timePart = eventData.time ? `${eventData.time} ` : '';
-    return `${timePart}${eventData.title}`;
+  function saveEvents() {
+    localStorage.setItem('calendarEvents', JSON.stringify(events));
   }
 
-  function sortEventsForDay(key) {
-    if (!events[key]) return;
-    events[key].sort((a, b) => {
-      if (!a.time && !b.time) return 0;
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time.localeCompare(b.time);
+  function isSameDate(leftDate, rightDate) {
+    return leftDate.getFullYear() === rightDate.getFullYear()
+      && leftDate.getMonth() === rightDate.getMonth()
+      && leftDate.getDate() === rightDate.getDate();
+  }
+
+  function eventOccursOnDate(eventData, sourceDate, targetDate) {
+    const recurrence = normalizeRecurrence(eventData.recurrence);
+    if (recurrence === 'none') {
+      return isSameDate(sourceDate, targetDate);
+    }
+
+    if (targetDate < sourceDate) {
+      return false;
+    }
+
+    if (eventData.recurrenceUntil) {
+      const untilDate = parseDateKey(eventData.recurrenceUntil);
+      if (targetDate > untilDate) {
+        return false;
+      }
+    }
+
+    if (recurrence === 'daily') {
+      return true;
+    }
+    if (recurrence === 'weekly') {
+      return sourceDate.getDay() === targetDate.getDay();
+    }
+
+    return sourceDate.getDate() === targetDate.getDate();
+  }
+
+  function getEventsForDate(date) {
+    const result = [];
+    Object.keys(events).forEach((sourceKey) => {
+      const sourceDate = parseDateKey(sourceKey);
+      (events[sourceKey] || []).forEach((eventData) => {
+        if (eventOccursOnDate(eventData, sourceDate, date)) {
+          result.push({
+            ...eventData,
+            sourceKey
+          });
+        }
+      });
     });
+
+    result.sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      return (a.startTime || '').localeCompare(b.startTime || '');
+    });
+    return result;
+  }
+
+  function formatEventTimeLabel(eventData) {
+    if (eventData.allDay) {
+      return 'All day';
+    }
+    if (eventData.startTime && eventData.endTime) {
+      return `${eventData.startTime} - ${eventData.endTime}`;
+    }
+    if (eventData.startTime) {
+      return eventData.startTime;
+    }
+    return 'No time';
+  }
+
+  function formatRecurrenceLabel(eventData) {
+    if (eventData.recurrence === 'none') {
+      return '';
+    }
+
+    const repeatMap = {
+      daily: 'Repeats daily',
+      weekly: 'Repeats weekly',
+      monthly: 'Repeats monthly'
+    };
+    const base = repeatMap[eventData.recurrence] || '';
+    if (eventData.recurrenceUntil) {
+      return `${base} until ${eventData.recurrenceUntil}`;
+    }
+    return base;
+  }
+
+  function updateMainScheduleState() {
+    const isAllDay = eventScheduleInput.value === 'allday';
+    eventStartTimeInput.disabled = isAllDay;
+    eventEndTimeInput.disabled = isAllDay;
+    eventStartTimeInput.classList.toggle('hidden', isAllDay);
+    eventEndTimeInput.classList.toggle('hidden', isAllDay);
+    if (isAllDay) {
+      eventStartTimeInput.value = '';
+      eventEndTimeInput.value = '';
+    }
+  }
+
+  function updateColorFromCategory() {
+    const category = normalizeCategory(eventCategoryInput.value);
+    eventColorInput.value = categoryTheme[category].color;
+  }
+
+  function addEventToDate(date, eventData) {
+    const eventKey = formatDateKey(date);
+    events[eventKey] = events[eventKey] || [];
+    events[eventKey].push({
+      id: generateEventId(),
+      title: eventData.title,
+      allDay: eventData.allDay,
+      startTime: eventData.startTime,
+      endTime: eventData.endTime,
+      category: normalizeCategory(eventData.category),
+      color: eventData.color,
+      recurrence: normalizeRecurrence(eventData.recurrence),
+      recurrenceUntil: eventData.recurrenceUntil
+    });
+    saveEvents();
   }
 
   function renderEventList(date) {
-    const key = formatDateKey(date);
     selectedDateHeading.textContent = `Events for ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     eventList.innerHTML = '';
-    const dayEvents = events[key] || [];
+    const dayEvents = getEventsForDate(date);
 
     if (!dayEvents.length) {
       const emptyItem = document.createElement('li');
@@ -437,10 +606,11 @@
     }
 
     dayEvents.forEach((eventData) => {
-      const categoryMeta = getCategoryMeta(eventData.category);
+      const categoryMeta = getCategoryMeta(eventData.category, eventData.color);
       const item = document.createElement('li');
       item.className = 'event-item';
       item.dataset.eventId = eventData.id;
+      item.dataset.sourceKey = eventData.sourceKey;
       item.style.borderLeft = `6px solid ${categoryMeta.color}`;
 
       const categoryBadge = document.createElement('span');
@@ -454,15 +624,15 @@
       title.textContent = eventData.title;
       item.appendChild(title);
 
-      const metaParts = [];
-      if (eventData.time) metaParts.push(`Time: ${eventData.time}`);
-      if (eventData.durationMinutes) metaParts.push(`Duration: ${eventData.durationMinutes} mins`);
-      if (metaParts.length) {
-        const meta = document.createElement('div');
-        meta.className = 'event-meta';
-        meta.textContent = metaParts.join(' • ');
-        item.appendChild(meta);
+      const recurrenceLabel = formatRecurrenceLabel(eventData);
+      const metaParts = [formatEventTimeLabel(eventData)];
+      if (recurrenceLabel) {
+        metaParts.push(recurrenceLabel);
       }
+      const meta = document.createElement('div');
+      meta.className = 'event-meta';
+      meta.textContent = metaParts.join(' • ');
+      item.appendChild(meta);
 
       const actionRow = document.createElement('div');
       actionRow.className = 'event-actions';
@@ -472,6 +642,7 @@
       editBtn.textContent = 'Edit';
       editBtn.dataset.action = 'edit';
       editBtn.dataset.eventId = eventData.id;
+      editBtn.dataset.sourceKey = eventData.sourceKey;
       actionRow.appendChild(editBtn);
 
       const deleteBtn = document.createElement('button');
@@ -479,6 +650,7 @@
       deleteBtn.textContent = 'Remove';
       deleteBtn.dataset.action = 'remove';
       deleteBtn.dataset.eventId = eventData.id;
+      deleteBtn.dataset.sourceKey = eventData.sourceKey;
       actionRow.appendChild(deleteBtn);
 
       item.appendChild(actionRow);
@@ -486,6 +658,7 @@
       const inlineEditForm = document.createElement('form');
       inlineEditForm.className = 'inline-edit-form hidden';
       inlineEditForm.dataset.eventId = eventData.id;
+      inlineEditForm.dataset.sourceKey = eventData.sourceKey;
 
       const editTitle = document.createElement('input');
       editTitle.type = 'text';
@@ -495,34 +668,70 @@
       editTitle.dataset.field = 'title';
       inlineEditForm.appendChild(editTitle);
 
-      const editTime = document.createElement('input');
-      editTime.type = 'time';
-      editTime.value = eventData.time || '';
-      editTime.dataset.field = 'time';
-      inlineEditForm.appendChild(editTime);
+      const editSchedule = document.createElement('select');
+      editSchedule.dataset.field = 'schedule';
+      [
+        { value: 'timeframe', label: 'Time frame' },
+        { value: 'allday', label: 'All day' }
+      ].forEach((optionDef) => {
+        const option = document.createElement('option');
+        option.value = optionDef.value;
+        option.textContent = optionDef.label;
+        option.selected = eventData.allDay ? optionDef.value === 'allday' : optionDef.value === 'timeframe';
+        editSchedule.appendChild(option);
+      });
+      inlineEditForm.appendChild(editSchedule);
 
-      const editDuration = document.createElement('input');
-      editDuration.type = 'number';
-      editDuration.min = '5';
-      editDuration.step = '5';
-      editDuration.max = '1440';
-      editDuration.placeholder = 'Duration';
-      editDuration.value = eventData.durationMinutes || '';
-      editDuration.dataset.field = 'durationMinutes';
-      inlineEditForm.appendChild(editDuration);
+      const editStart = document.createElement('input');
+      editStart.type = 'time';
+      editStart.value = eventData.startTime || '';
+      editStart.dataset.field = 'startTime';
+      inlineEditForm.appendChild(editStart);
+
+      const editEnd = document.createElement('input');
+      editEnd.type = 'time';
+      editEnd.value = eventData.endTime || '';
+      editEnd.dataset.field = 'endTime';
+      inlineEditForm.appendChild(editEnd);
 
       const editCategory = document.createElement('select');
       editCategory.dataset.field = 'category';
-      ['personal', 'work', 'health', 'study', 'family', 'other'].forEach((value) => {
+      Object.keys(categoryTheme).forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = value.charAt(0).toUpperCase() + value.slice(1);
-        if (value === eventData.category) {
-          option.selected = true;
-        }
+        option.textContent = categoryTheme[value].label;
+        option.selected = value === eventData.category;
         editCategory.appendChild(option);
       });
       inlineEditForm.appendChild(editCategory);
+
+      const editColor = document.createElement('input');
+      editColor.type = 'color';
+      editColor.value = eventData.color || categoryTheme[eventData.category].color;
+      editColor.dataset.field = 'color';
+      inlineEditForm.appendChild(editColor);
+
+      const editRecurrence = document.createElement('select');
+      editRecurrence.dataset.field = 'recurrence';
+      [
+        { value: 'none', label: 'One-time event' },
+        { value: 'daily', label: 'Daily series' },
+        { value: 'weekly', label: 'Weekly series' },
+        { value: 'monthly', label: 'Monthly series' }
+      ].forEach((optionDef) => {
+        const option = document.createElement('option');
+        option.value = optionDef.value;
+        option.textContent = optionDef.label;
+        option.selected = optionDef.value === eventData.recurrence;
+        editRecurrence.appendChild(option);
+      });
+      inlineEditForm.appendChild(editRecurrence);
+
+      const editUntil = document.createElement('input');
+      editUntil.type = 'date';
+      editUntil.value = eventData.recurrenceUntil || '';
+      editUntil.dataset.field = 'recurrenceUntil';
+      inlineEditForm.appendChild(editUntil);
 
       const inlineActions = document.createElement('div');
       inlineActions.className = 'inline-edit-actions';
@@ -537,17 +746,34 @@
       cancelBtn.textContent = 'Cancel';
       cancelBtn.dataset.action = 'edit-cancel';
       cancelBtn.dataset.eventId = eventData.id;
+      cancelBtn.dataset.sourceKey = eventData.sourceKey;
       inlineActions.appendChild(cancelBtn);
 
       inlineEditForm.appendChild(inlineActions);
       item.appendChild(inlineEditForm);
       eventList.appendChild(item);
+
+      updateInlineScheduleState(inlineEditForm);
     });
   }
 
+  function updateInlineScheduleState(formElement) {
+    const schedule = formElement.querySelector('[data-field="schedule"]');
+    const start = formElement.querySelector('[data-field="startTime"]');
+    const end = formElement.querySelector('[data-field="endTime"]');
+    const isAllDay = schedule.value === 'allday';
+    start.disabled = isAllDay;
+    end.disabled = isAllDay;
+    start.classList.toggle('hidden', isAllDay);
+    end.classList.toggle('hidden', isAllDay);
+    if (isAllDay) {
+      start.value = '';
+      end.value = '';
+    }
+  }
+
   function renderDayFocus(date) {
-    const key = formatDateKey(date);
-    const dayEvents = events[key] || [];
+    const dayEvents = getEventsForDate(date);
     dayFocusTitle.textContent = `Day Focus: ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     dayFocusList.innerHTML = '';
 
@@ -560,7 +786,7 @@
     }
 
     dayEvents.forEach((eventData) => {
-      const categoryMeta = getCategoryMeta(eventData.category);
+      const categoryMeta = getCategoryMeta(eventData.category, eventData.color);
       const item = document.createElement('li');
       item.className = 'day-focus-item';
       item.style.borderLeftColor = categoryMeta.color;
@@ -578,32 +804,16 @@
 
       const meta = document.createElement('div');
       meta.className = 'day-focus-meta';
-      const parts = [];
-      parts.push(eventData.time ? `Time: ${eventData.time}` : 'Time: Not set');
-      parts.push(eventData.durationMinutes ? `Duration: ${eventData.durationMinutes} mins` : 'Duration: Not set');
+      const parts = [formatEventTimeLabel(eventData)];
+      const recurrenceLabel = formatRecurrenceLabel(eventData);
+      if (recurrenceLabel) {
+        parts.push(recurrenceLabel);
+      }
       meta.textContent = parts.join(' • ');
       item.appendChild(meta);
 
       dayFocusList.appendChild(item);
     });
-  }
-
-  function saveEvents() {
-    localStorage.setItem('calendarEvents', JSON.stringify(events));
-  }
-
-  function addEventToDate(date, eventData) {
-    const eventKey = formatDateKey(date);
-    events[eventKey] = events[eventKey] || [];
-    events[eventKey].push({
-      id: generateEventId(),
-      title: eventData.title,
-      time: eventData.time,
-      durationMinutes: eventData.durationMinutes,
-      category: normalizeCategory(eventData.category)
-    });
-    sortEventsForDay(eventKey);
-    saveEvents();
   }
 
   function createDateCell(day, date, isCurrentMonth) {
@@ -612,25 +822,25 @@
     if (isCurrentMonth) {
       cell.dataset.date = formatDateKey(date);
     }
+
     const dayNumber = document.createElement('span');
     dayNumber.className = 'day-number';
     dayNumber.textContent = day;
     cell.appendChild(dayNumber);
 
     if (isCurrentMonth) {
-      const eventKey = formatDateKey(date);
-      const dayEvents = events[eventKey] || [];
+      const dayEvents = getEventsForDate(date);
       if (dayEvents.length) {
         const eventListPreview = document.createElement('div');
         eventListPreview.className = 'calendar-cell-events';
-        dayEvents.slice(0, 2).forEach(eventData => {
-          const categoryMeta = getCategoryMeta(eventData.category);
+        dayEvents.slice(0, 2).forEach((eventData) => {
+          const categoryMeta = getCategoryMeta(eventData.category, eventData.color);
           const eventBadge = document.createElement('div');
           eventBadge.className = 'calendar-cell-event';
 
           const timeLine = document.createElement('div');
           timeLine.className = 'calendar-cell-event-time';
-          timeLine.textContent = eventData.time || 'No time';
+          timeLine.textContent = formatEventTimeLabel(eventData);
           eventBadge.appendChild(timeLine);
 
           const titleLine = document.createElement('span');
@@ -645,11 +855,10 @@
         cell.appendChild(eventListPreview);
       }
 
-      if (date.toDateString() === new Date().toDateString()) {
+      if (isSameDate(date, new Date())) {
         cell.classList.add('today');
       }
-
-      if (date.toDateString() === selectedDate.toDateString()) {
+      if (isSameDate(date, selectedDate)) {
         cell.classList.add('selected');
       }
 
@@ -672,7 +881,7 @@
     monthLabel.textContent = `${monthNames[month]} ${year}`;
     calendarGrid.innerHTML = '';
 
-    dayNames.forEach(day => {
+    dayNames.forEach((day) => {
       const cell = document.createElement('div');
       cell.className = 'day-name';
       cell.textContent = day;
@@ -685,25 +894,27 @@
     const prevMonthLastDay = new Date(year, month, 0).getDate();
 
     for (let i = startDay - 1; i >= 0; i--) {
-      const date = new Date(year, month - 1, prevMonthLastDay - i);
-      const cell = createDateCell(prevMonthLastDay - i, date, false);
-      calendarGrid.appendChild(cell);
+      const dateValue = new Date(year, month - 1, prevMonthLastDay - i);
+      calendarGrid.appendChild(createDateCell(prevMonthLastDay - i, dateValue, false));
     }
 
     for (let day = 1; day <= lastDayOfMonth; day++) {
-      const date = new Date(year, month, day);
-      const cell = createDateCell(day, date, true);
-      calendarGrid.appendChild(cell);
+      const dateValue = new Date(year, month, day);
+      calendarGrid.appendChild(createDateCell(day, dateValue, true));
     }
 
     const totalCells = startDay + lastDayOfMonth;
     const nextCells = (7 - (totalCells % 7)) % 7;
-
     for (let i = 1; i <= nextCells; i++) {
-      const date = new Date(year, month + 1, i);
-      const cell = createDateCell(i, date, false);
-      calendarGrid.appendChild(cell);
+      const dateValue = new Date(year, month + 1, i);
+      calendarGrid.appendChild(createDateCell(i, dateValue, false));
     }
+  }
+
+  function findSourceEvent(sourceKey, eventId) {
+    const sourceEvents = events[sourceKey] || [];
+    const index = sourceEvents.findIndex((item) => item.id === eventId);
+    return { sourceEvents, index };
   }
 
   document.getElementById('prevMonth').addEventListener('click', () => {
@@ -716,21 +927,37 @@
     renderCalendar(currentDate);
   });
 
+  eventScheduleInput.addEventListener('change', updateMainScheduleState);
+  eventCategoryInput.addEventListener('change', updateColorFromCategory);
+
+  eventList.addEventListener('change', (event) => {
+    const form = event.target.closest('.inline-edit-form');
+    if (!form) return;
+
+    if (event.target.dataset.field === 'schedule') {
+      updateInlineScheduleState(form);
+    }
+    if (event.target.dataset.field === 'category') {
+      const colorInput = form.querySelector('[data-field="color"]');
+      const category = normalizeCategory(event.target.value);
+      colorInput.value = categoryTheme[category].color;
+    }
+  });
+
   eventList.addEventListener('click', (event) => {
     const targetButton = event.target.closest('button[data-action]');
     if (!targetButton) return;
 
     const action = targetButton.dataset.action;
     const eventId = targetButton.dataset.eventId;
-    const key = formatDateKey(selectedDate);
-    const dayEvents = events[key] || [];
-    const eventIndex = dayEvents.findIndex((item) => item.id === eventId);
-    if (eventIndex === -1) return;
+    const sourceKey = targetButton.dataset.sourceKey;
+    const { sourceEvents, index } = findSourceEvent(sourceKey, eventId);
+    if (index === -1) return;
 
     if (action === 'remove') {
-      dayEvents.splice(eventIndex, 1);
-      if (!dayEvents.length) {
-        delete events[key];
+      sourceEvents.splice(index, 1);
+      if (!sourceEvents.length) {
+        delete events[sourceKey];
       }
       saveEvents();
       renderCalendar(currentDate);
@@ -762,28 +989,38 @@
     if (!form) return;
     event.preventDefault();
 
-    const key = formatDateKey(selectedDate);
-    const dayEvents = events[key] || [];
     const eventId = form.dataset.eventId;
-    const eventIndex = dayEvents.findIndex((item) => item.id === eventId);
-    if (eventIndex === -1) return;
+    const sourceKey = form.dataset.sourceKey;
+    const { sourceEvents, index } = findSourceEvent(sourceKey, eventId);
+    if (index === -1) return;
 
     const nextTitle = form.querySelector('[data-field="title"]').value.trim();
+    const nextSchedule = form.querySelector('[data-field="schedule"]').value;
+    const nextStart = form.querySelector('[data-field="startTime"]').value.trim();
+    const nextEnd = form.querySelector('[data-field="endTime"]').value.trim();
+    const nextCategory = normalizeCategory(form.querySelector('[data-field="category"]').value);
+    const nextColor = form.querySelector('[data-field="color"]').value;
+    const nextRecurrence = normalizeRecurrence(form.querySelector('[data-field="recurrence"]').value);
+    const nextUntil = form.querySelector('[data-field="recurrenceUntil"]').value;
+
     if (!nextTitle) return;
+    if (nextSchedule === 'timeframe' && nextStart && nextEnd && nextStart >= nextEnd) {
+      alert('End time should be after start time.');
+      return;
+    }
 
-    const nextTime = form.querySelector('[data-field="time"]').value.trim();
-    const nextDuration = form.querySelector('[data-field="durationMinutes"]').value.trim();
-    const nextCategory = form.querySelector('[data-field="category"]').value;
-
-    dayEvents[eventIndex] = {
-      ...dayEvents[eventIndex],
+    sourceEvents[index] = {
+      ...sourceEvents[index],
       title: nextTitle,
-      time: nextTime,
-      durationMinutes: nextDuration,
-      category: normalizeCategory(nextCategory)
+      allDay: nextSchedule === 'allday',
+      startTime: nextSchedule === 'allday' ? '' : nextStart,
+      endTime: nextSchedule === 'allday' ? '' : nextEnd,
+      category: nextCategory,
+      color: nextColor,
+      recurrence: nextRecurrence,
+      recurrenceUntil: nextRecurrence === 'none' ? '' : nextUntil
     };
 
-    sortEventsForDay(key);
     saveEvents();
     renderCalendar(currentDate);
     renderEventList(selectedDate);
@@ -792,21 +1029,46 @@
 
   eventForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const trimmed = eventInput.value.trim();
-    if (!trimmed) {
+    const title = eventInput.value.trim();
+    const schedule = eventScheduleInput.value;
+    const startTime = eventStartTimeInput.value;
+    const endTime = eventEndTimeInput.value;
+    const category = normalizeCategory(eventCategoryInput.value);
+    const color = eventColorInput.value;
+    const recurrence = normalizeRecurrence(eventRecurrenceInput.value);
+    const recurrenceUntil = eventRecurrenceUntilInput.value;
+
+    if (!title) {
       eventInput.focus();
       return;
     }
+
+    if (schedule === 'timeframe' && startTime && endTime && startTime >= endTime) {
+      alert('End time should be after start time.');
+      return;
+    }
+
     addEventToDate(selectedDate, {
-      title: trimmed,
-      time: eventTimeInput.value,
-      durationMinutes: eventDurationInput.value ? String(eventDurationInput.value) : '',
-      category: eventCategoryInput.value
+      title,
+      allDay: schedule === 'allday',
+      startTime: schedule === 'allday' ? '' : startTime,
+      endTime: schedule === 'allday' ? '' : endTime,
+      category,
+      color,
+      recurrence,
+      recurrenceUntil: recurrence === 'none' ? '' : recurrenceUntil
     });
+
     eventInput.value = '';
-    eventTimeInput.value = '';
-    eventDurationInput.value = '';
+    eventScheduleInput.value = 'timeframe';
+    eventStartTimeInput.value = '';
+    eventEndTimeInput.value = '';
     eventCategoryInput.value = 'personal';
+    eventColorInput.value = categoryTheme.personal.color;
+    eventRecurrenceInput.value = 'none';
+    eventRecurrenceUntilInput.value = '';
+    updateMainScheduleState();
+
     renderCalendar(currentDate);
     renderEventList(selectedDate);
     renderDayFocus(selectedDate);
@@ -815,15 +1077,26 @@
   });
 
   clearDayBtn.addEventListener('click', () => {
-    const key = formatDateKey(selectedDate);
-    if (!events[key] || !events[key].length) {
+    const visibleEvents = getEventsForDate(selectedDate);
+    if (!visibleEvents.length) {
       return;
     }
-    const shouldDelete = confirm('Remove all events for the selected date?');
+    const shouldDelete = confirm('Remove all events shown for the selected date? Recurring items will be removed from their series.');
     if (!shouldDelete) {
       return;
     }
-    delete events[key];
+
+    visibleEvents.forEach((entry) => {
+      const sourceEvents = events[entry.sourceKey] || [];
+      const index = sourceEvents.findIndex((item) => item.id === entry.id);
+      if (index !== -1) {
+        sourceEvents.splice(index, 1);
+        if (!sourceEvents.length) {
+          delete events[entry.sourceKey];
+        }
+      }
+    });
+
     saveEvents();
     renderCalendar(currentDate);
     renderEventList(selectedDate);
@@ -834,6 +1107,8 @@
     dayFocusPanel.classList.add('hidden');
   });
 
+  updateMainScheduleState();
+  updateColorFromCategory();
   renderCalendar(currentDate);
   renderEventList(selectedDate);
   renderDayFocus(selectedDate);
