@@ -104,12 +104,12 @@
   .event-panel { margin-top: 1.2rem; padding: 1rem 1.1rem; background: #ecd8c4; border-radius: 14px; border: 1px solid var(--line); }
   .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
   .event-form {
-    display: flex;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: minmax(170px, 1.5fr) minmax(110px, 0.9fr) minmax(140px, 1fr) auto;
+    gap: 0.45rem;
     margin-bottom: 0.8rem;
   }
   .event-form input {
-    flex: 1;
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 0.55rem 0.65rem;
@@ -127,6 +127,38 @@
     background: var(--ink);
     color: var(--sand);
   }
+  .event-meta {
+    color: #5e4635;
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+  }
+  .event-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+  .event-actions button {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f9efe4;
+    color: var(--ink);
+    padding: 0.35rem 0.55rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+  }
+  .event-actions button:hover { background: #f2dfcb; }
+  .event-clear-day {
+    margin-top: 0.8rem;
+    border: none;
+    border-radius: 10px;
+    padding: 0.5rem 0.8rem;
+    background: #3a2820;
+    color: #f7ead9;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+  }
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
   .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
   .event-none { color: #634e3e; font-style: italic; }
@@ -139,6 +171,7 @@
     .calendar-grid .day-number { font-size: 0.9rem; }
     .calendar-cell-event { font-size: 0.68rem; }
     #monthLabel { min-width: 138px; }
+    .event-form { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -165,10 +198,13 @@
   <div class="event-panel" id="eventPanel">
     <h3 id="selectedDateHeading">Events for today</h3>
     <form class="event-form" id="eventForm">
-      <input id="eventInput" type="text" placeholder="Add an event for selected date" maxlength="120" />
+      <input id="eventInput" type="text" placeholder="Event title" maxlength="120" />
+      <input id="eventTimeInput" type="time" />
+      <input id="eventDurationInput" type="number" min="5" step="5" max="1440" placeholder="Duration (mins)" />
       <button type="submit">Add</button>
     </form>
     <ul class="event-list" id="eventList"></ul>
+    <button class="event-clear-day" id="clearDayBtn" type="button">Clear all events for selected day</button>
   </div>
 </div>
 
@@ -181,16 +217,58 @@
   const selectedDateHeading = document.getElementById('selectedDateHeading');
   const eventForm = document.getElementById('eventForm');
   const eventInput = document.getElementById('eventInput');
+  const eventTimeInput = document.getElementById('eventTimeInput');
+  const eventDurationInput = document.getElementById('eventDurationInput');
+  const clearDayBtn = document.getElementById('clearDayBtn');
   let currentDate = new Date();
   let selectedDate = new Date();
   const storedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
-  const events = storedEvents || {};
+  const events = normalizeEventsData(storedEvents || {});
+
+  function normalizeEventsData(inputEvents) {
+    const normalized = {};
+    Object.keys(inputEvents).forEach((key) => {
+      const dayEvents = Array.isArray(inputEvents[key]) ? inputEvents[key] : [];
+      normalized[key] = dayEvents.map((eventValue) => {
+        if (typeof eventValue === 'string') {
+          return {
+            title: eventValue,
+            time: '',
+            durationMinutes: ''
+          };
+        }
+
+        return {
+          title: (eventValue && eventValue.title ? String(eventValue.title) : '').trim(),
+          time: eventValue && eventValue.time ? String(eventValue.time) : '',
+          durationMinutes: eventValue && eventValue.durationMinutes !== undefined ? String(eventValue.durationMinutes) : ''
+        };
+      }).filter((eventValue) => eventValue.title);
+    });
+
+    return normalized;
+  }
 
   function formatDateKey(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function formatEventPreview(eventData) {
+    const timePart = eventData.time ? `${eventData.time} ` : '';
+    return `${timePart}${eventData.title}`;
+  }
+
+  function sortEventsForDay(key) {
+    if (!events[key]) return;
+    events[key].sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
   }
 
   function renderEventList(date) {
@@ -207,10 +285,67 @@
       return;
     }
 
-    dayEvents.forEach((eventText, index) => {
+    dayEvents.forEach((eventData, index) => {
       const item = document.createElement('li');
       item.className = 'event-item';
-      item.textContent = eventText;
+
+      const title = document.createElement('div');
+      title.textContent = eventData.title;
+      item.appendChild(title);
+
+      const metaParts = [];
+      if (eventData.time) metaParts.push(`Time: ${eventData.time}`);
+      if (eventData.durationMinutes) metaParts.push(`Duration: ${eventData.durationMinutes} mins`);
+      if (metaParts.length) {
+        const meta = document.createElement('div');
+        meta.className = 'event-meta';
+        meta.textContent = metaParts.join(' • ');
+        item.appendChild(meta);
+      }
+
+      const actionRow = document.createElement('div');
+      actionRow.className = 'event-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', () => {
+        const newTitle = prompt('Edit event title:', eventData.title);
+        if (newTitle === null) return;
+        const trimmedTitle = newTitle.trim();
+        if (!trimmedTitle) return;
+
+        const newTime = prompt('Edit time (HH:MM, optional):', eventData.time || '') || '';
+        const newDuration = prompt('Edit duration in minutes (optional):', eventData.durationMinutes || '') || '';
+
+        events[key][index] = {
+          title: trimmedTitle,
+          time: newTime.trim(),
+          durationMinutes: newDuration.trim()
+        };
+
+        sortEventsForDay(key);
+        saveEvents();
+        renderCalendar(currentDate);
+        renderEventList(selectedDate);
+      });
+      actionRow.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = 'Remove';
+      deleteBtn.addEventListener('click', () => {
+        events[key].splice(index, 1);
+        if (!events[key].length) {
+          delete events[key];
+        }
+        saveEvents();
+        renderCalendar(currentDate);
+        renderEventList(selectedDate);
+      });
+      actionRow.appendChild(deleteBtn);
+
+      item.appendChild(actionRow);
       eventList.appendChild(item);
     });
   }
@@ -219,10 +354,11 @@
     localStorage.setItem('calendarEvents', JSON.stringify(events));
   }
 
-  function addEventToDate(date, text) {
+  function addEventToDate(date, eventData) {
     const eventKey = formatDateKey(date);
     events[eventKey] = events[eventKey] || [];
-    events[eventKey].push(text);
+    events[eventKey].push(eventData);
+    sortEventsForDay(eventKey);
     saveEvents();
   }
 
@@ -243,10 +379,10 @@
       if (dayEvents.length) {
         const eventListPreview = document.createElement('div');
         eventListPreview.className = 'calendar-cell-events';
-        dayEvents.slice(0, 2).forEach(eventText => {
+        dayEvents.slice(0, 2).forEach(eventData => {
           const eventBadge = document.createElement('div');
           eventBadge.className = 'calendar-cell-event';
-          eventBadge.textContent = eventText;
+          eventBadge.textContent = formatEventPreview(eventData);
           eventListPreview.appendChild(eventBadge);
         });
         cell.appendChild(eventListPreview);
@@ -328,11 +464,32 @@
       eventInput.focus();
       return;
     }
-    addEventToDate(selectedDate, trimmed);
+    addEventToDate(selectedDate, {
+      title: trimmed,
+      time: eventTimeInput.value,
+      durationMinutes: eventDurationInput.value ? String(eventDurationInput.value) : ''
+    });
     eventInput.value = '';
+    eventTimeInput.value = '';
+    eventDurationInput.value = '';
     renderCalendar(currentDate);
     renderEventList(selectedDate);
     eventInput.focus();
+  });
+
+  clearDayBtn.addEventListener('click', () => {
+    const key = formatDateKey(selectedDate);
+    if (!events[key] || !events[key].length) {
+      return;
+    }
+    const shouldDelete = confirm('Remove all events for the selected date?');
+    if (!shouldDelete) {
+      return;
+    }
+    delete events[key];
+    saveEvents();
+    renderCalendar(currentDate);
+    renderEventList(selectedDate);
   });
 
   renderCalendar(currentDate);
