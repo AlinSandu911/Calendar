@@ -4,55 +4,133 @@
 <meta charset="UTF-8">
 <title>This Year's Calendar</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; background: #e7d6c4; color: #1a1a1a; }
-  .container { max-width: 900px; margin: auto; background: #f5e7d1; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16); border: 1px solid #d5b49c; }
-  h1, h2 { margin-top: 0; color: #1a1a1a; }
-  p { line-height: 1.75; color: #2a1f18; }
-  .button { display: inline-block; margin-top: 1.5rem; padding: 0.8rem 1.4rem; background: #1a1a1a; color: #f5e7d1; text-decoration: none; border-radius: 10px; }
-  .button:hover { opacity: 0.9; }
-  .note { margin-top: 1.25rem; color: #3a2b20; }
-  .calendar-panel { margin-top: 2rem; }
+  :root {
+    --ink: #17120e;
+    --ink-soft: #3b2d22;
+    --sand: #f4e3cf;
+    --sand-deep: #e5ccb3;
+    --card: #f8ebda;
+    --line: #d9bda2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 1.4rem;
+    background: radial-gradient(circle at 10% 10%, #f1dcc7 0%, #ddc2a7 55%, #d5b294 100%);
+    color: var(--ink);
+  }
+  .container {
+    max-width: 980px;
+    margin: auto;
+    background: var(--sand);
+    padding: 1.5rem;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    box-shadow: 0 14px 35px rgba(17, 12, 8, 0.18);
+  }
+  .intro {
+    margin-bottom: 1.2rem;
+    text-align: center;
+    background: linear-gradient(180deg, #f9ebdd 0%, #f2dcc6 100%);
+  }
+  h1, h2, h3 { margin-top: 0; color: var(--ink); }
+  h1 {
+    margin-bottom: 0;
+    font-size: clamp(1.25rem, 2.1vw, 1.75rem);
+    letter-spacing: 0.2px;
+  }
+  p { line-height: 1.6; color: var(--ink-soft); }
+  .calendar-panel { margin-top: 0; }
   .calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .calendar-nav { display: flex; gap: 0.75rem; align-items: center; }
-  .calendar-nav button { background: #1a1a1a; color: #f5e7d1; border: none; padding: 0.75rem 1rem; border-radius: 10px; cursor: pointer; font-weight: 700; }
+  .calendar-nav button {
+    background: var(--ink);
+    color: var(--sand);
+    border: none;
+    padding: 0.65rem 0.95rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+  }
   .calendar-nav button:hover { opacity: 0.92; }
+  #monthLabel { font-weight: 800; color: var(--ink); min-width: 170px; text-align: center; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 1rem; }
-  .calendar-grid div { background: #f8eee1; border: 1px solid #d3b8a0; border-radius: 16px; padding: 0.95rem; min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-  .calendar-grid div:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
-  .calendar-grid .day-name { text-align: center; font-size: 0.85rem; font-weight: 700; color: #3f2d23; background: #e8d4c2; border-radius: 10px; padding: 0.45rem 0; cursor: default; }
-  .calendar-grid .day-number { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.4rem; color: #1a1a1a; }
-  .calendar-grid .today { border-color: #1a1a1a; background: #d9b99a; }
-  .calendar-grid .not-current-month { color: #8b7c71; opacity: 0.75; background: #f3e5d8; cursor: default; }
+  .calendar-grid div {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.75rem;
+    min-height: 94px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .calendar-grid div:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+  .calendar-grid .day-name {
+    text-align: center;
+    font-size: 0.83rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--sand-deep);
+    border-radius: 10px;
+    padding: 0.4rem 0;
+    cursor: default;
+    min-height: auto;
+    justify-content: center;
+  }
+  .calendar-grid .day-number { font-size: 1.03rem; font-weight: 800; color: var(--ink); }
+  .calendar-grid .today { border-color: var(--ink); background: #e7c9ad; }
+  .calendar-grid .not-current-month { color: #8b7c71; opacity: 0.72; background: #f0dfce; cursor: default; }
   .calendar-cell { position: relative; }
-  .calendar-cell-events { list-style: none; padding: 0; margin: 0; gap: 0.3rem; display: flex; flex-direction: column; }
-  .calendar-cell-event { font-size: 0.82rem; line-height: 1.2; background: rgba(26, 26, 26, 0.08); color: #1a1a1a; border-radius: 8px; padding: 0.3rem 0.5rem; }
-  .calendar-description { color: #3a2b20; margin-top: 0.75rem; }
-  .helper-text { margin-top: 0.75rem; color: #3a2b20; }
-  .event-panel { margin-top: 1.5rem; padding: 1.2rem 1.4rem; background: #e8d7c5; border-radius: 16px; border: 1px solid #d5b49c; }
-  .event-panel h3 { margin: 0 0 0.75rem 0; color: #1a1a1a; }
+  .calendar-cell-events { padding: 0; margin: 0; gap: 0.25rem; display: flex; flex-direction: column; }
+  .calendar-cell-event {
+    font-size: 0.76rem;
+    line-height: 1.2;
+    background: rgba(23, 18, 14, 0.09);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 0.25rem 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .calendar-description { color: var(--ink-soft); margin-top: 0.75rem; }
+  .helper-text { margin-top: 0.25rem; color: var(--ink-soft); }
+  .event-panel { margin-top: 1.2rem; padding: 1rem 1.1rem; background: #ecd8c4; border-radius: 14px; border: 1px solid var(--line); }
+  .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
-  .event-item { background: #fff2e5; border: 1px solid #d3b8a0; padding: 0.9rem 1rem; border-radius: 12px; color: #2b1f17; }
+  .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
   .event-none { color: #634e3e; font-style: italic; }
+  @media (max-width: 740px) {
+    body { padding: 0.8rem; }
+    .container { padding: 1rem; border-radius: 14px; }
+    .calendar-grid { gap: 6px; }
+    .calendar-grid div { min-height: 74px; padding: 0.55rem; }
+    .calendar-grid .day-name { font-size: 0.74rem; }
+    .calendar-grid .day-number { font-size: 0.9rem; }
+    .calendar-cell-event { font-size: 0.68rem; }
+    #monthLabel { min-width: 138px; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>Welcome to This Year's Calendar</h1>
-  <p>Plan your year ahead with a clean, simple calendar designed to help you stay organized. This app presents the dates, months, and seasons of the current year at a glance, with easy access to each month and important reminders.</p>
-  <p>Use the calendar to track events, set goals, and mark important moments throughout the year. Whether you want to schedule meetings, holidays, or personal milestones, this app is the perfect starting point.</p>
-  <a href="#calendar" class="button">View the Calendar</a>
-  <p class="note">Use the buttons to move through every month of every year.</p>
+<div class="container intro">
+  <h1>Hi, Alin-Antonio. What event would you like to add today?</h1>
 </div>
 
 <div id="calendar" class="container calendar-panel">
   <div class="calendar-header">
     <div>
       <h2>Monthly Calendar</h2>
-      <p class="helper-text">Hi Alin, welcome to your calendar. Click on any of the dates below to see any events.</p>
+      <p class="helper-text">Click any date to add an event. Your events are saved in this browser.</p>
     </div>
     <div class="calendar-nav">
       <button id="prevMonth">← Previous</button>
-      <div id="monthLabel" style="font-weight:700; color:#1a73e8;"></div>
+      <div id="monthLabel"></div>
       <button id="nextMonth">Next →</button>
     </div>
   </div>
