@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>This Year's Calendar</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; background: #e7d6c4; color: #1a1a1a; }
+  .container { max-width: 900px; margin: auto; background: #f5e7d1; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16); border: 1px solid #d5b49c; }
+  h1, h2 { margin-top: 0; color: #1a1a1a; }
+  p { line-height: 1.75; color: #2a1f18; }
+  .button { display: inline-block; margin-top: 1.5rem; padding: 0.8rem 1.4rem; background: #1a1a1a; color: #f5e7d1; text-decoration: none; border-radius: 10px; }
+  .button:hover { opacity: 0.9; }
+  .note { margin-top: 1.25rem; color: #3a2b20; }
+  .calendar-panel { margin-top: 2rem; }
+  .calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .calendar-nav { display: flex; gap: 0.75rem; align-items: center; }
+  .calendar-nav button { background: #1a1a1a; color: #f5e7d1; border: none; padding: 0.75rem 1rem; border-radius: 10px; cursor: pointer; font-weight: 700; }
+  .calendar-nav button:hover { opacity: 0.92; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 1rem; }
+  .calendar-grid div { background: #f8eee1; border: 1px solid #d3b8a0; border-radius: 16px; padding: 0.95rem; min-height: 88px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .calendar-grid div:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+  .calendar-grid .day-name { text-align: center; font-size: 0.85rem; font-weight: 700; color: #3f2d23; background: #e8d4c2; border-radius: 10px; padding: 0.45rem 0; cursor: default; }
+  .calendar-grid .day-number { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.4rem; color: #1a1a1a; }
+  .calendar-grid .today { border-color: #1a1a1a; background: #d9b99a; }
+  .calendar-grid .not-current-month { color: #8b7c71; opacity: 0.75; background: #f3e5d8; cursor: default; }
+  .calendar-cell { position: relative; }
+  .calendar-cell-events { list-style: none; padding: 0; margin: 0; gap: 0.3rem; display: flex; flex-direction: column; }
+  .calendar-cell-event { font-size: 0.82rem; line-height: 1.2; background: rgba(26, 26, 26, 0.08); color: #1a1a1a; border-radius: 8px; padding: 0.3rem 0.5rem; }
+  .calendar-description { color: #3a2b20; margin-top: 0.75rem; }
+  .helper-text { margin-top: 0.75rem; color: #3a2b20; }
+  .event-panel { margin-top: 1.5rem; padding: 1.2rem 1.4rem; background: #e8d7c5; border-radius: 16px; border: 1px solid #d5b49c; }
+  .event-panel h3 { margin: 0 0 0.75rem 0; color: #1a1a1a; }
+  .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
+  .event-item { background: #fff2e5; border: 1px solid #d3b8a0; padding: 0.9rem 1rem; border-radius: 12px; color: #2b1f17; }
+  .event-none { color: #634e3e; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Welcome to This Year's Calendar</h1>
+  <p>Plan your year ahead with a clean, simple calendar designed to help you stay organized. This app presents the dates, months, and seasons of the current year at a glance, with easy access to each month and important reminders.</p>
+  <p>Use the calendar to track events, set goals, and mark important moments throughout the year. Whether you want to schedule meetings, holidays, or personal milestones, this app is the perfect starting point.</p>
+  <a href="#calendar" class="button">View the Calendar</a>
+  <p class="note">Use the buttons to move through every month of every year.</p>
+</div>
+
+<div id="calendar" class="container calendar-panel">
+  <div class="calendar-header">
+    <div>
+      <h2>Monthly Calendar</h2>
+      <p class="helper-text">Hi Alin, welcome to your calendar. Click on any of the dates below to see any events.</p>
+    </div>
+    <div class="calendar-nav">
+      <button id="prevMonth">← Previous</button>
+      <div id="monthLabel" style="font-weight:700; color:#1a73e8;"></div>
+      <button id="nextMonth">Next →</button>
+    </div>
+  </div>
+
+  <div class="calendar-grid" id="calendarGrid"></div>
+  <p class="calendar-description">Click the arrows to move through the months. Today's date is highlighted. Click any date to add or edit events.</p>
+  <div class="event-panel" id="eventPanel">
+    <h3 id="selectedDateHeading">Events for today</h3>
+    <ul class="event-list" id="eventList"></ul>
+  </div>
+</div>
+
+<script>
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const calendarGrid = document.getElementById('calendarGrid');
+  const monthLabel = document.getElementById('monthLabel');
+  const eventList = document.getElementById('eventList');
+  const selectedDateHeading = document.getElementById('selectedDateHeading');
+  let currentDate = new Date();
+  let selectedDate = new Date();
+  const storedEvents = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
+  const events = storedEvents || {};
+
+  function formatDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function renderEventList(date) {
+    const key = formatDateKey(date);
+    selectedDateHeading.textContent = `Events for ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    eventList.innerHTML = '';
+    const dayEvents = events[key] || [];
+
+    if (!dayEvents.length) {
+      const emptyItem = document.createElement('li');
+      emptyItem.className = 'event-item event-none';
+      emptyItem.textContent = 'No events yet. Click any date to add one.';
+      eventList.appendChild(emptyItem);
+      return;
+    }
+
+    dayEvents.forEach((eventText, index) => {
+      const item = document.createElement('li');
+      item.className = 'event-item';
+      item.textContent = eventText;
+      eventList.appendChild(item);
+    });
+  }
+
+  function saveEvents() {
+    localStorage.setItem('calendarEvents', JSON.stringify(events));
+  }
+
+  function createDateCell(day, date, isCurrentMonth) {
+    const cell = document.createElement('div');
+    cell.className = isCurrentMonth ? 'calendar-cell' : 'not-current-month';
+    if (isCurrentMonth) {
+      cell.dataset.date = formatDateKey(date);
+    }
+    const dayNumber = document.createElement('span');
+    dayNumber.className = 'day-number';
+    dayNumber.textContent = day;
+    cell.appendChild(dayNumber);
+
+    if (isCurrentMonth) {
+      const eventKey = formatDateKey(date);
+      const dayEvents = events[eventKey] || [];
+      if (dayEvents.length) {
+        const eventListPreview = document.createElement('div');
+        eventListPreview.className = 'calendar-cell-events';
+        dayEvents.slice(0, 2).forEach(eventText => {
+          const eventBadge = document.createElement('div');
+          eventBadge.className = 'calendar-cell-event';
+          eventBadge.textContent = eventText;
+          eventListPreview.appendChild(eventBadge);
+        });
+        cell.appendChild(eventListPreview);
+      }
+
+      if (date.toDateString() === new Date().toDateString()) {
+        cell.classList.add('today');
+      }
+
+      cell.addEventListener('click', () => {
+        const userEvent = prompt(`Add an event for ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}:`, '');
+        if (userEvent === null) return;
+        const trimmed = userEvent.trim();
+        if (!trimmed) return;
+        events[eventKey] = events[eventKey] || [];
+        events[eventKey].push(trimmed);
+        saveEvents();
+        selectedDate = new Date(date);
+        renderCalendar(currentDate);
+        renderEventList(selectedDate);
+      });
+    }
+
+    return cell;
+  }
+
+  function renderCalendar(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    monthLabel.textContent = `${monthNames[month]} ${year}`;
+    calendarGrid.innerHTML = '';
+
+    dayNames.forEach(day => {
+      const cell = document.createElement('div');
+      cell.className = 'day-name';
+      cell.textContent = day;
+      calendarGrid.appendChild(cell);
+    });
+
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay();
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+    for (let i = startDay - 1; i >= 0; i--) {
+      const date = new Date(year, month - 1, prevMonthLastDay - i);
+      const cell = createDateCell(prevMonthLastDay - i, date, false);
+      calendarGrid.appendChild(cell);
+    }
+
+    for (let day = 1; day <= lastDayOfMonth; day++) {
+      const date = new Date(year, month, day);
+      const cell = createDateCell(day, date, true);
+      calendarGrid.appendChild(cell);
+    }
+
+    const totalCells = startDay + lastDayOfMonth;
+    const nextCells = (7 - (totalCells % 7)) % 7;
+
+    for (let i = 1; i <= nextCells; i++) {
+      const date = new Date(year, month + 1, i);
+      const cell = createDateCell(i, date, false);
+      calendarGrid.appendChild(cell);
+    }
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  });
+
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  });
+
+  renderCalendar(currentDate);
+  renderEventList(selectedDate);
+</script>
+</body>
+</html>
