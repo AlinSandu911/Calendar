@@ -6,11 +6,11 @@
 <style>
   :root {
     --ink: #17120e;
-    --ink-soft: #3b2d22;
-    --sand: #f4e3cf;
-    --sand-deep: #e5ccb3;
-    --card: #f8ebda;
-    --line: #d9bda2;
+    --ink-soft: #2f231a;
+    --sand: #dcc2a6;
+    --sand-deep: #c9a98a;
+    --card: #e5cdb2;
+    --line: #b48c69;
     --work: #4a2e1f;
     --personal: #9c6b3f;
     --health: #2f5f4c;
@@ -23,7 +23,7 @@
     font-family: "Trebuchet MS", "Segoe UI", sans-serif;
     margin: 0;
     padding: 1.4rem;
-    background: radial-gradient(circle at 10% 10%, #f1dcc7 0%, #ddc2a7 55%, #d5b294 100%);
+    background: radial-gradient(circle at 10% 10%, #d7b292 0%, #b98e67 55%, #9a734f 100%);
     color: var(--ink);
   }
   .container {
@@ -38,7 +38,7 @@
   .intro {
     margin-bottom: 1.2rem;
     text-align: center;
-    background: linear-gradient(180deg, #f9ebdd 0%, #f2dcc6 100%);
+    background: linear-gradient(180deg, #e7cfb7 0%, #d2b08f 100%);
   }
   h1, h2, h3 { margin-top: 0; color: var(--ink); }
   h1 {
@@ -89,15 +89,15 @@
     justify-content: center;
   }
   .calendar-grid .day-number { font-size: 1.03rem; font-weight: 800; color: var(--ink); }
-  .calendar-grid .today { border-color: var(--ink); background: #e7c9ad; }
+  .calendar-grid .today { border-color: var(--ink); background: #c79f7a; }
   .calendar-grid .selected { outline: 2px solid var(--ink); outline-offset: -2px; }
-  .calendar-grid .not-current-month { color: #8b7c71; opacity: 0.72; background: #f0dfce; cursor: default; }
+  .calendar-grid .not-current-month { color: #5d4a3b; opacity: 0.72; background: #d8bea4; cursor: default; }
   .calendar-cell { position: relative; }
   .calendar-cell-events { padding: 0; margin: 0; gap: 0.25rem; display: flex; flex-direction: column; }
   .calendar-cell-event {
     font-size: 0.73rem;
     line-height: 1.25;
-    background: rgba(23, 18, 14, 0.11);
+    background: rgba(23, 18, 14, 0.13);
     color: #1a120d;
     border-radius: 8px;
     padding: 0.26rem 0.36rem;
@@ -108,15 +108,24 @@
     gap: 0.35rem;
   }
   .calendar-cell-event-time {
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     font-weight: 800;
     letter-spacing: 0.1px;
     margin-bottom: 0;
     text-transform: none;
     white-space: nowrap;
-    padding: 0.1rem 0.33rem;
+    padding: 0.07rem 0.25rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.4);
+    max-width: 3.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .calendar-cell-event-time.is-all-day {
+    font-size: 0.55rem;
+    padding: 0.05rem 0.22rem;
+    max-width: 2.1rem;
+    text-align: center;
   }
   .calendar-cell-event-title {
     display: block;
@@ -131,7 +140,7 @@
   }
   .calendar-description { color: var(--ink-soft); margin-top: 0.75rem; }
   .helper-text { margin-top: 0.25rem; color: var(--ink-soft); }
-  .event-panel { margin-top: 1.2rem; padding: 1rem 1.1rem; background: #ecd8c4; border-radius: 14px; border: 1px solid var(--line); }
+  .event-panel { margin-top: 1.2rem; padding: 1rem 1.1rem; background: #d8b89a; border-radius: 14px; border: 1px solid var(--line); }
   .event-panel h3 { margin: 0 0 0.75rem 0; color: var(--ink); }
   .event-form {
     display: grid;
@@ -301,53 +310,6 @@
     border-radius: 10px;
     padding: 0.8rem;
   }
-  .day-focus-panel {
-    margin-top: 1rem;
-    padding: 1rem 1.1rem;
-    background: #f6e8d7;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-  }
-  .day-focus-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    margin-bottom: 0.65rem;
-  }
-  .day-focus-title {
-    margin: 0;
-    font-size: 1.1rem;
-  }
-  .day-focus-close {
-    border: none;
-    border-radius: 9px;
-    padding: 0.42rem 0.7rem;
-    font: inherit;
-    font-weight: 700;
-    background: var(--ink);
-    color: var(--sand);
-    cursor: pointer;
-  }
-  .day-focus-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 0.55rem;
-  }
-  .day-focus-item {
-    background: #fff5e9;
-    border: 1px solid var(--line);
-    border-left-width: 7px;
-    border-radius: 10px;
-    padding: 0.7rem 0.8rem;
-  }
-  .day-focus-meta {
-    color: #5e4635;
-    font-size: 0.86rem;
-    margin-top: 0.25rem;
-  }
   .event-none { color: #634e3e; font-style: italic; }
   @media (max-width: 740px) {
     body { padding: 0.8rem; }
@@ -414,13 +376,6 @@
     </form>
     <ul class="event-list" id="eventList"></ul>
     <button class="event-clear-day" id="clearDayBtn" type="button">Clear all events for selected day</button>
-    <div class="day-focus-panel hidden" id="dayFocusPanel">
-      <div class="day-focus-header">
-        <h4 class="day-focus-title" id="dayFocusTitle">Day Focus</h4>
-        <button class="day-focus-close" id="closeDayFocusBtn" type="button">Close Day Focus</button>
-      </div>
-      <ul class="day-focus-list" id="dayFocusList"></ul>
-    </div>
   </div>
 </div>
 
@@ -460,10 +415,6 @@
   const eventRecurrenceInput = document.getElementById('eventRecurrenceInput');
   const eventRecurrenceUntilInput = document.getElementById('eventRecurrenceUntilInput');
   const clearDayBtn = document.getElementById('clearDayBtn');
-  const dayFocusPanel = document.getElementById('dayFocusPanel');
-  const dayFocusTitle = document.getElementById('dayFocusTitle');
-  const dayFocusList = document.getElementById('dayFocusList');
-  const closeDayFocusBtn = document.getElementById('closeDayFocusBtn');
   const dayModal = document.getElementById('dayModal');
   const dayModalTitle = document.getElementById('dayModalTitle');
   const dayModalList = document.getElementById('dayModalList');
@@ -872,50 +823,6 @@
     }
   }
 
-  function renderDayFocus(date) {
-    const dayEvents = getEventsForDate(date);
-    dayFocusTitle.textContent = `Day Focus: ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-    dayFocusList.innerHTML = '';
-
-    if (!dayEvents.length) {
-      const emptyItem = document.createElement('li');
-      emptyItem.className = 'day-focus-item event-none';
-      emptyItem.textContent = 'No events on this day yet.';
-      dayFocusList.appendChild(emptyItem);
-      return;
-    }
-
-    dayEvents.forEach((eventData) => {
-      const categoryMeta = getCategoryMeta(eventData.category, eventData.color);
-      const item = document.createElement('li');
-      item.className = 'day-focus-item';
-      item.style.borderLeftColor = categoryMeta.color;
-
-      const label = document.createElement('span');
-      label.className = 'event-category-badge';
-      label.style.background = categoryMeta.color;
-      label.textContent = categoryMeta.label;
-      item.appendChild(label);
-
-      const title = document.createElement('div');
-      title.className = 'event-title';
-      title.textContent = eventData.title;
-      item.appendChild(title);
-
-      const meta = document.createElement('div');
-      meta.className = 'day-focus-meta';
-      const parts = [formatEventTimeLabel(eventData)];
-      const recurrenceLabel = formatRecurrenceLabel(eventData);
-      if (recurrenceLabel) {
-        parts.push(recurrenceLabel);
-      }
-      meta.textContent = parts.join(' • ');
-      item.appendChild(meta);
-
-      dayFocusList.appendChild(item);
-    });
-  }
-
   function renderDayModal(date) {
     const dayEvents = getEventsForDate(date);
     dayModalTitle.textContent = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} - Events`;
@@ -987,7 +894,6 @@
         saveEvents();
         renderCalendar(currentDate);
         renderEventList(selectedDate);
-        renderDayFocus(selectedDate);
         renderDayModal(selectedDate);
       });
       actions.appendChild(removeButton);
@@ -1021,7 +927,10 @@
 
           const timeLine = document.createElement('div');
           timeLine.className = 'calendar-cell-event-time';
-          timeLine.textContent = eventData.allDay ? 'All-day' : (eventData.startTime || 'No time');
+          if (eventData.allDay) {
+            timeLine.classList.add('is-all-day');
+          }
+          timeLine.textContent = eventData.allDay ? 'All' : (eventData.startTime || 'No time');
           eventBadge.appendChild(timeLine);
 
           const titleLine = document.createElement('span');
@@ -1047,7 +956,6 @@
         selectedDate = new Date(date);
         renderCalendar(currentDate);
         renderEventList(selectedDate);
-        renderDayFocus(selectedDate);
         renderDayModal(selectedDate);
         dayModal.classList.add('is-open');
         dayModal.setAttribute('aria-hidden', 'false');
@@ -1144,7 +1052,7 @@
       saveEvents();
       renderCalendar(currentDate);
       renderEventList(selectedDate);
-      renderDayFocus(selectedDate);
+      renderDayModal(selectedDate);
       return;
     }
 
@@ -1206,7 +1114,7 @@
     saveEvents();
     renderCalendar(currentDate);
     renderEventList(selectedDate);
-    renderDayFocus(selectedDate);
+    renderDayModal(selectedDate);
   });
 
   eventForm.addEventListener('submit', (event) => {
@@ -1253,8 +1161,7 @@
 
     renderCalendar(currentDate);
     renderEventList(selectedDate);
-    renderDayFocus(selectedDate);
-    dayFocusPanel.classList.remove('hidden');
+    renderDayModal(selectedDate);
     eventInput.focus();
   });
 
@@ -1282,11 +1189,7 @@
     saveEvents();
     renderCalendar(currentDate);
     renderEventList(selectedDate);
-    renderDayFocus(selectedDate);
-  });
-
-  closeDayFocusBtn.addEventListener('click', () => {
-    dayFocusPanel.classList.add('hidden');
+    renderDayModal(selectedDate);
   });
 
   dayModalCloseBtn.addEventListener('click', () => {
@@ -1312,7 +1215,7 @@
   updateColorFromCategory();
   renderCalendar(currentDate);
   renderEventList(selectedDate);
-  renderDayFocus(selectedDate);
+  renderDayModal(selectedDate);
 </script>
 </body>
 </html>
