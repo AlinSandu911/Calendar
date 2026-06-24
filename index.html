@@ -366,7 +366,7 @@
   <div class="calendar-header">
     <div>
       <h2>Monthly Calendar</h2>
-      <p class="helper-text">Click any date to add an event. Choose All day or a 30-minute time frame, and set repeat if needed.</p>
+      <p class="helper-text">Click any date to add an event. Choose a schedule and repeat pattern if needed.</p>
     </div>
     <div class="calendar-nav">
       <button id="prevMonth">← Previous</button>
@@ -608,9 +608,10 @@
     return result;
   }
 
-  function formatEventTimeLabel(eventData) {
+  function formatEventTimeLabel(eventData, options = {}) {
+    const { includeAllDay = true } = options;
     if (eventData.allDay) {
-      return 'All day';
+      return includeAllDay ? 'All day' : '';
     }
     if (eventData.startTime && eventData.endTime) {
       return `${eventData.startTime} - ${eventData.endTime}`;
@@ -719,15 +720,18 @@
       title.textContent = getEventTitleWithSeriesIcon(eventData);
       item.appendChild(title);
 
-      const metaParts = [formatEventTimeLabel(eventData)];
+      const metaParts = [formatEventTimeLabel(eventData, { includeAllDay: false })];
       const durationLabel = formatDurationLabel(eventData);
       if (durationLabel) {
         metaParts.push(durationLabel);
       }
       const meta = document.createElement('div');
       meta.className = 'event-meta';
-      meta.textContent = metaParts.join(' • ');
-      item.appendChild(meta);
+      const metaText = metaParts.filter(Boolean).join(' • ');
+      if (metaText) {
+        meta.textContent = metaText;
+        item.appendChild(meta);
+      }
 
       const actionRow = document.createElement('div');
       actionRow.className = 'event-actions';
@@ -906,7 +910,7 @@
       if (durationLabel) {
         details.push(durationLabel);
       }
-      meta.textContent = details.join(' • ');
+      meta.textContent = details.filter(Boolean).join(' • ');
       item.appendChild(meta);
 
       const actions = document.createElement('div');
