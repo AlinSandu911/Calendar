@@ -289,7 +289,7 @@
   <div class="calendar-header">
     <div>
       <h2>Monthly Calendar</h2>
-      <p class="helper-text">Click any date to add an event. Your events are saved in this browser.</p>
+      <p class="helper-text">Click any date to add an event. Choose All day or a 30-minute time frame, and set repeat if needed.</p>
     </div>
     <div class="calendar-nav">
       <button id="prevMonth">← Previous</button>
@@ -308,8 +308,8 @@
         <option value="timeframe">Time frame</option>
         <option value="allday">All day</option>
       </select>
-      <input id="eventStartTimeInput" type="time" />
-      <input id="eventEndTimeInput" type="time" />
+      <input id="eventStartTimeInput" type="time" step="1800" />
+      <input id="eventEndTimeInput" type="time" step="1800" />
       <select id="eventCategoryInput">
         <option value="personal">Personal</option>
         <option value="work">Work</option>
@@ -321,9 +321,9 @@
       <input id="eventColorInput" type="color" value="#9c6b3f" />
       <select id="eventRecurrenceInput">
         <option value="none">One-time event</option>
-        <option value="daily">Daily series</option>
-        <option value="weekly">Weekly series</option>
-        <option value="monthly">Monthly series</option>
+        <option value="daily">Repetitive: daily</option>
+        <option value="weekly">Repetitive: weekly</option>
+        <option value="monthly">Repetitive: monthly</option>
       </select>
       <input id="eventRecurrenceUntilInput" type="date" />
       <button type="submit">Add</button>
@@ -684,12 +684,14 @@
 
       const editStart = document.createElement('input');
       editStart.type = 'time';
+      editStart.step = '1800';
       editStart.value = eventData.startTime || '';
       editStart.dataset.field = 'startTime';
       inlineEditForm.appendChild(editStart);
 
       const editEnd = document.createElement('input');
       editEnd.type = 'time';
+      editEnd.step = '1800';
       editEnd.value = eventData.endTime || '';
       editEnd.dataset.field = 'endTime';
       inlineEditForm.appendChild(editEnd);
