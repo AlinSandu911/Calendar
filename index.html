@@ -100,23 +100,31 @@
     background: rgba(23, 18, 14, 0.11);
     color: #1a120d;
     border-radius: 8px;
-    padding: 0.32rem 0.42rem;
+    padding: 0.26rem 0.36rem;
     overflow: hidden;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.35rem;
   }
   .calendar-cell-event-time {
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 800;
-    letter-spacing: 0.2px;
-    margin-bottom: 0.1rem;
-    text-transform: uppercase;
+    letter-spacing: 0.1px;
+    margin-bottom: 0;
+    text-transform: none;
+    white-space: nowrap;
+    padding: 0.1rem 0.33rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
   }
   .calendar-cell-event-title {
     display: block;
     white-space: normal;
     word-break: break-word;
     display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     font-weight: 700;
@@ -1013,7 +1021,7 @@
 
           const timeLine = document.createElement('div');
           timeLine.className = 'calendar-cell-event-time';
-          timeLine.textContent = formatEventTimeLabel(eventData);
+          timeLine.textContent = eventData.allDay ? 'All-day' : (eventData.startTime || 'No time');
           eventBadge.appendChild(timeLine);
 
           const titleLine = document.createElement('span');
@@ -1039,12 +1047,10 @@
         selectedDate = new Date(date);
         renderCalendar(currentDate);
         renderEventList(selectedDate);
-        dayFocusPanel.classList.remove('hidden');
         renderDayFocus(selectedDate);
         renderDayModal(selectedDate);
         dayModal.classList.add('is-open');
         dayModal.setAttribute('aria-hidden', 'false');
-        eventInput.focus();
       });
     }
 
