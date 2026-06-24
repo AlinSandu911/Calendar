@@ -53,13 +53,24 @@
   .calendar-nav button {
     background: var(--ink);
     color: var(--sand);
-    border: none;
-    padding: 0.65rem 0.95rem;
-    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.62rem 0.95rem;
+    border-radius: 11px;
     cursor: pointer;
     font-weight: 700;
+    letter-spacing: 0.15px;
+    box-shadow: 0 4px 12px rgba(10, 7, 5, 0.22);
+    transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
   }
-  .calendar-nav button:hover { opacity: 0.92; }
+  .calendar-nav button:hover {
+    opacity: 0.96;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(10, 7, 5, 0.26);
+  }
+  .calendar-nav button:focus-visible {
+    outline: 2px solid #f6e4d3;
+    outline-offset: 2px;
+  }
   #monthLabel { font-weight: 800; color: var(--ink); min-width: 170px; text-align: center; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 1rem; }
   .calendar-grid div {
@@ -102,30 +113,6 @@
     border-radius: 8px;
     padding: 0.26rem 0.36rem;
     overflow: hidden;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 0.35rem;
-  }
-  .calendar-cell-event-time {
-    font-size: 0.58rem;
-    font-weight: 800;
-    letter-spacing: 0.1px;
-    margin-bottom: 0;
-    text-transform: none;
-    white-space: nowrap;
-    padding: 0.07rem 0.25rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.4);
-    max-width: 3.2rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .calendar-cell-event-time.is-all-day {
-    font-size: 0.55rem;
-    padding: 0.05rem 0.22rem;
-    max-width: 2.1rem;
-    text-align: center;
   }
   .calendar-cell-event-title {
     display: block;
@@ -145,27 +132,51 @@
   .event-form {
     display: grid;
     grid-template-columns: repeat(4, minmax(130px, 1fr));
-    gap: 0.45rem;
-    margin-bottom: 0.8rem;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
   }
   .event-form input,
   .event-form select {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 0.55rem 0.65rem;
+    padding: 0.58rem 0.68rem;
     font: inherit;
     color: var(--ink);
     background: #fff8f1;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  }
+  .event-form input:focus,
+  .event-form select:focus,
+  .inline-edit-form input:focus,
+  .inline-edit-form select:focus {
+    outline: none;
+    border-color: #8f6848;
+    box-shadow: 0 0 0 3px rgba(143, 104, 72, 0.2);
+    background: #fffdf9;
   }
   .event-form button {
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 0.55rem 0.9rem;
+    padding: 0.58rem 0.9rem;
     font: inherit;
     font-weight: 700;
     cursor: pointer;
     background: var(--ink);
     color: var(--sand);
+    box-shadow: 0 5px 12px rgba(10, 7, 5, 0.2);
+    transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+  }
+  .event-form button:hover {
+    opacity: 0.96;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 14px rgba(10, 7, 5, 0.24);
+  }
+  .event-form button:focus-visible,
+  .event-actions button:focus-visible,
+  .event-clear-day:focus-visible,
+  .day-modal-close:focus-visible {
+    outline: 2px solid #f6e4d3;
+    outline-offset: 2px;
   }
   .event-category-badge {
     display: inline-block;
@@ -176,11 +187,6 @@
     font-weight: 700;
     color: #fff;
   }
-  .event-meta {
-    color: #5e4635;
-    font-size: 0.85rem;
-    margin-top: 0.2rem;
-  }
   .event-actions {
     display: flex;
     gap: 0.4rem;
@@ -189,17 +195,21 @@
   .event-actions button {
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #f9efe4;
+    background: #f8ecdf;
     color: var(--ink);
-    padding: 0.35rem 0.55rem;
+    padding: 0.37rem 0.58rem;
     cursor: pointer;
     font: inherit;
     font-size: 0.82rem;
+    transition: transform 0.14s ease, background 0.14s ease;
   }
-  .event-actions button:hover { background: #f2dfcb; }
+  .event-actions button:hover {
+    background: #efdac4;
+    transform: translateY(-1px);
+  }
   .event-clear-day {
     margin-top: 0.8rem;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 0.5rem 0.8rem;
     background: #3a2820;
@@ -207,10 +217,31 @@
     cursor: pointer;
     font: inherit;
     font-weight: 700;
+    box-shadow: 0 4px 10px rgba(10, 7, 5, 0.2);
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
+  }
+  .event-clear-day:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(10, 7, 5, 0.24);
   }
   .event-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
-  .event-item { background: #fff2e5; border: 1px solid var(--line); padding: 0.75rem 0.85rem; border-radius: 10px; color: #2b1f17; }
-  .event-title { font-weight: 700; }
+  .event-item {
+    background: #fff2e5;
+    border: 1px solid var(--line);
+    padding: 0.8rem 0.9rem;
+    border-radius: 10px;
+    color: #2b1f17;
+    box-shadow: 0 2px 7px rgba(21, 14, 10, 0.09);
+  }
+  .event-title {
+    font-weight: 800;
+    letter-spacing: 0.1px;
+    line-height: 1.35;
+  }
+  .event-meta {
+    color: #4f3c2f;
+    font-size: 0.84rem;
+  }
   .inline-edit-form {
     margin-top: 0.65rem;
     padding-top: 0.65rem;
@@ -298,8 +329,8 @@
     padding: 0.7rem 0.8rem;
   }
   .day-modal-meta {
-    color: #5e4635;
-    font-size: 0.86rem;
+    color: #4f3c2f;
+    font-size: 0.84rem;
     margin-top: 0.25rem;
   }
   .day-modal-empty {
@@ -590,21 +621,36 @@
     return 'No time';
   }
 
-  function formatRecurrenceLabel(eventData) {
-    if (eventData.recurrence === 'none') {
+  function formatDurationLabel(eventData) {
+    if (eventData.allDay || !eventData.startTime || !eventData.endTime) {
       return '';
     }
 
-    const repeatMap = {
-      daily: 'Repeats daily',
-      weekly: 'Repeats weekly',
-      monthly: 'Repeats monthly'
-    };
-    const base = repeatMap[eventData.recurrence] || '';
-    if (eventData.recurrenceUntil) {
-      return `${base} until ${eventData.recurrenceUntil}`;
+    const [startHour, startMinute] = eventData.startTime.split(':').map(Number);
+    const [endHour, endMinute] = eventData.endTime.split(':').map(Number);
+    const startTotal = (startHour * 60) + startMinute;
+    const endTotal = (endHour * 60) + endMinute;
+    const minutes = endTotal - startTotal;
+
+    if (Number.isNaN(minutes) || minutes <= 0) {
+      return '';
     }
-    return base;
+
+    const hoursPart = Math.floor(minutes / 60);
+    const minutesPart = minutes % 60;
+    if (hoursPart && minutesPart) {
+      return `Duration: ${hoursPart}h ${minutesPart}m`;
+    }
+    if (hoursPart) {
+      return `Duration: ${hoursPart}h`;
+    }
+    return `Duration: ${minutesPart}m`;
+  }
+
+  function getEventTitleWithSeriesIcon(eventData) {
+    return normalizeRecurrence(eventData.recurrence) === 'none'
+      ? eventData.title
+      : `🔁 ${eventData.title}`;
   }
 
   function updateMainScheduleState() {
@@ -670,13 +716,13 @@
 
       const title = document.createElement('div');
       title.className = 'event-title';
-      title.textContent = eventData.title;
+      title.textContent = getEventTitleWithSeriesIcon(eventData);
       item.appendChild(title);
 
-      const recurrenceLabel = formatRecurrenceLabel(eventData);
       const metaParts = [formatEventTimeLabel(eventData)];
-      if (recurrenceLabel) {
-        metaParts.push(recurrenceLabel);
+      const durationLabel = formatDurationLabel(eventData);
+      if (durationLabel) {
+        metaParts.push(durationLabel);
       }
       const meta = document.createElement('div');
       meta.className = 'event-meta';
@@ -850,15 +896,15 @@
 
       const title = document.createElement('div');
       title.className = 'event-title';
-      title.textContent = eventData.title;
+      title.textContent = getEventTitleWithSeriesIcon(eventData);
       item.appendChild(title);
 
       const meta = document.createElement('div');
       meta.className = 'day-modal-meta';
       const details = [formatEventTimeLabel(eventData)];
-      const recurrenceLabel = formatRecurrenceLabel(eventData);
-      if (recurrenceLabel) {
-        details.push(recurrenceLabel);
+      const durationLabel = formatDurationLabel(eventData);
+      if (durationLabel) {
+        details.push(durationLabel);
       }
       meta.textContent = details.join(' • ');
       item.appendChild(meta);
@@ -925,17 +971,9 @@
           const eventBadge = document.createElement('div');
           eventBadge.className = 'calendar-cell-event';
 
-          const timeLine = document.createElement('div');
-          timeLine.className = 'calendar-cell-event-time';
-          if (eventData.allDay) {
-            timeLine.classList.add('is-all-day');
-          }
-          timeLine.textContent = eventData.allDay ? 'All' : (eventData.startTime || 'No time');
-          eventBadge.appendChild(timeLine);
-
           const titleLine = document.createElement('span');
           titleLine.className = 'calendar-cell-event-title';
-          titleLine.textContent = eventData.title;
+          titleLine.textContent = getEventTitleWithSeriesIcon(eventData);
           eventBadge.appendChild(titleLine);
 
           eventBadge.style.borderLeft = `4px solid ${categoryMeta.color}`;
